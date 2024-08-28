@@ -120,9 +120,10 @@ def generate_hexagonal_grid_graph(rows, cols):
     
     return G
 
-# Example Usage
-G = generate_hexagonal_grid_graph(8, 11)
+if __name__ == "__main__":
+    # Example Usage
+    G = generate_hexagonal_grid_graph(8, 11)
 
-# Print node attributes
-for node, data in G.nodes(data=True):
-    print(f"Node {node}: {data}")
+    # Print node attributes
+    for node, data in G.nodes(data=True):
+        print(f"Node {node}: {data}")

@@ -83,12 +83,13 @@ def add_connected_area_attribute(G: nx.Graph, attribute: str, N: int) -> None:
     connected_area = expand_connected_area(G, start_node, N)
     assign_attribute_to_nodes(G, connected_area, attribute)
 
-# Example Usage
-G = nx.hexagonal_lattice_graph(5, 5)  # Create a 5x5 hexagonal grid graph
+if __name__ == "__main__":
+    # Example Usage
+    G = nx.hexagonal_lattice_graph(5, 5)  # Create a 5x5 hexagonal grid graph
 
-# Mark a connected area of 10 nodes with 'is_Swamp' attribute
-add_connected_area_attribute(G, 'is_Swamp', 10)
+    # Mark a connected area of 10 nodes with 'is_Swamp' attribute
+    add_connected_area_attribute(G, 'is_Swamp', 10)
 
-# Print node attributes
-for node, data in G.nodes(data=True):
-    print(f"Node {node}: {data}")
+    # Print node attributes
+    for node, data in G.nodes(data=True):
+        print(f"Node {node}: {data}")

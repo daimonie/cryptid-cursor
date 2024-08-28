@@ -115,3 +115,30 @@ def filter_nodes_by_attributes(graph: nx.Graph, *args) -> list:
         return all(node_attrs.get(attr) == value for attr, value in attr_conditions.items())
     
     return [node for node, attrs in graph.nodes(data=True) if node_matches_conditions(attrs)]
+
+if __name__ == "__main__":
+    # Example usage or test code
+    test_graph = nx.Graph()
+    test_graph.add_nodes_from([
+        (1, {"attr1": True, "attr2": False}),
+        (2, {"attr1": False, "attr2": True}),
+        (3, {"attr1": True, "attr2": True})
+    ])
+    test_graph.add_edges_from([(1, 2), (2, 3)])
+
+    print("Original graph:", test_graph.nodes(data=True))
+    
+    enriched_graph = enrich_node_attributes(test_graph)
+    print("Enriched graph:", enriched_graph.nodes(data=True))
+    
+    filtered_nodes = filter_nodes_by_attributes(enriched_graph, "attr1", True)
+    print("Nodes with attr1=True:", filtered_nodes)
+
+    serialized = serialize_graph(enriched_graph)
+    print("Serialized graph:", serialized)
+
+    unique_code = generate_unique_code(serialized)
+    print("Unique code:", unique_code)
+
+    reconstructed_graph = parse_code_to_graph(unique_code, {unique_code: serialized})
+    print("Reconstructed graph:", reconstructed_graph.nodes(data=True))
