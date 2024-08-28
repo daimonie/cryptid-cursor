@@ -1,69 +1,72 @@
 import unittest
-from  utils.graph_utils import (
-    create_graph,
-    add_edge,
-    get_neighbors,
-    has_path,
-    shortest_path
+import networkx as nx
+from utils.graph_utils import (
+    serialize_graph,
+    generate_unique_code,
+    parse_code_to_graph,
+    enrich_node_attributes,
+    filter_nodes_by_attributes,
+    create_graph
 )
 
 class TestGraphUtils(unittest.TestCase):
 
     def setUp(self):
-        self.graph = create_graph()
+        self.test_graph = create_graph()
 
     def test_create_graph(self):
-        self.assertIsInstance(self.graph, dict)
-        self.assertEqual(len(self.graph), 0)
+        graph = create_graph()
+        self.assertEqual(len(graph.nodes), 3)
+        self.assertEqual(len(graph.edges), 2)
+        self.assertTrue(graph.nodes[1]['attr1'])
+        self.assertFalse(graph.nodes[1]['attr2'])
+        self.assertFalse(graph.nodes[2]['attr1'])
+        self.assertTrue(graph.nodes[2]['attr2'])
+        self.assertTrue(graph.nodes[3]['attr1'])
+        self.assertTrue(graph.nodes[3]['attr2'])
 
-    def test_add_edge(self):
-        add_edge(self.graph, 'A', 'B')
-        add_edge(self.graph, 'A', 'C')
-        add_edge(self.graph, 'B', 'D')
+    def test_serialize_graph(self):
+        serialized = serialize_graph(self.test_graph)
+        self.assertIsInstance(serialized, str)
+        self.assertIn('"nodes":', serialized)
+        self.assertIn('"edges":', serialized)
 
-        self.assertIn('A', self.graph)
-        self.assertIn('B', self.graph)
-        self.assertIn('C', self.graph)
-        self.assertIn('D', self.graph)
-        self.assertIn('B', self.graph['A'])
-        self.assertIn('C', self.graph['A'])
-        self.assertIn('D', self.graph['B'])
+    def test_generate_unique_code(self):
+        serialized = serialize_graph(self.test_graph)
+        code1 = generate_unique_code(serialized)
+        code2 = generate_unique_code(serialized)
+        self.assertEqual(code1, code2)
+        self.assertEqual(len(code1), 64)  # SHA-256 hash length
 
-    def test_get_neighbors(self):
-        add_edge(self.graph, 'A', 'B')
-        add_edge(self.graph, 'A', 'C')
-        add_edge(self.graph, 'B', 'D')
+    def test_parse_code_to_graph(self):
+        serialized = serialize_graph(self.test_graph)
+        code = generate_unique_code(serialized)
+        reconstructed = parse_code_to_graph(code, {code: serialized})
+        self.assertEqual(len(self.test_graph.nodes), len(reconstructed.nodes))
+        self.assertEqual(len(self.test_graph.edges), len(reconstructed.edges))
+        self.assertEqual(dict(self.test_graph.nodes(data=True)), dict(reconstructed.nodes(data=True)))
 
-        neighbors = get_neighbors(self.graph, 'A')
-        self.assertIn('B', neighbors)
-        self.assertIn('C', neighbors)
-        self.assertNotIn('D', neighbors)
+    def test_parse_code_to_graph_key_error(self):
+        with self.assertRaises(KeyError):
+            parse_code_to_graph("nonexistent_hash", {})
 
-    def test_has_path(self):
-        add_edge(self.graph, 'A', 'B')
-        add_edge(self.graph, 'B', 'C')
-        add_edge(self.graph, 'C', 'D')
+    def test_enrich_node_attributes(self):
+        enriched = enrich_node_attributes(self.test_graph)
+        self.assertTrue(enriched.nodes[1]['neighbor_has_attr2'])
+        self.assertFalse(enriched.nodes[1]['neighbor_has_attr1'])
+        self.assertTrue(enriched.nodes[1]['neighbor_of_neighbor_has_attr1'])
+        self.assertTrue(enriched.nodes[1]['neighbor_of_neighbor_has_attr2'])
 
-        self.assertTrue(has_path(self.graph, 'A', 'D'))
-        self.assertTrue(has_path(self.graph, 'A', 'C'))
-        self.assertFalse(has_path(self.graph, 'B', 'A'))
-        self.assertFalse(has_path(self.graph, 'A', 'E'))
+    def test_filter_nodes_by_attributes(self):
+        filtered = filter_nodes_by_attributes(self.test_graph, 'attr1', True)
+        self.assertEqual(set(filtered), {1, 3})
 
-    def test_shortest_path(self):
-        add_edge(self.graph, 'A', 'B')
-        add_edge(self.graph, 'A', 'C')
-        add_edge(self.graph, 'B', 'D')
-        add_edge(self.graph, 'C', 'D')
-        add_edge(self.graph, 'D', 'E')
+        filtered = filter_nodes_by_attributes(self.test_graph, 'attr1', True, 'attr2', True)
+        self.assertEqual(filtered, [3])
 
-        path = shortest_path(self.graph, 'A', 'E')
-        self.assertIn(path, [['A', 'B', 'D', 'E'], ['A', 'C', 'D', 'E']])
-
-        path = shortest_path(self.graph, 'A', 'D')
-        self.assertIn(path, [['A', 'B', 'D', 'E'], ['A', 'C', 'D', 'E']])
-
-        path = shortest_path(self.graph, 'A', 'F')
-        self.assertIsNone(path)
+    def test_filter_nodes_by_attributes_invalid_args(self):
+        with self.assertRaises(ValueError):
+            filter_nodes_by_attributes(self.test_graph, 'attr1')
 
 if __name__ == '__main__':
     unittest.main()

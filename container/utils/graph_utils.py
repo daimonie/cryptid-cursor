@@ -81,6 +81,9 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
             attr_summary[node]['neighbors_of_neighbors'].update(graph.neighbors(neighbor))
         attr_summary[node]['neighbors_of_neighbors'].discard(node)
     
+    # Cache for new attributes
+    new_attributes = {node: {} for node in graph.nodes}
+    
     # Enrich the attributes
     for node in graph.nodes:
         node_attrs = graph.nodes[node]
@@ -89,8 +92,12 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
 
         for attr, value in node_attrs.items():
             if isinstance(value, bool) and value:
-                graph.nodes[node][f"neighbor_has_{attr}"] = any(graph.nodes[neighbor].get(attr, False) for neighbor in neighbors)
-                graph.nodes[node][f"neighbor_of_neighbor_has_{attr}"] = any(graph.nodes[neighbor_of_neighbor].get(attr, False) for neighbor_of_neighbor in neighbors_of_neighbors)
+                new_attributes[node][f"neighbor_has_{attr}"] = any(graph.nodes[neighbor].get(attr, False) for neighbor in neighbors)
+                new_attributes[node][f"neighbor_of_neighbor_has_{attr}"] = any(graph.nodes[neighbor_of_neighbor].get(attr, False) for neighbor_of_neighbor in neighbors_of_neighbors)
+    
+    # Update node attributes after the loop
+    for node, attrs in new_attributes.items():
+        graph.nodes[node].update(attrs)
     
     return graph
 
@@ -116,15 +123,18 @@ def filter_nodes_by_attributes(graph: nx.Graph, *args) -> list:
     
     return [node for node, attrs in graph.nodes(data=True) if node_matches_conditions(attrs)]
 
-if __name__ == "__main__":
-    # Example usage or test code
-    test_graph = nx.Graph()
-    test_graph.add_nodes_from([
+def create_graph():
+    graph = nx.Graph()
+    graph.add_nodes_from([
         (1, {"attr1": True, "attr2": False}),
         (2, {"attr1": False, "attr2": True}),
         (3, {"attr1": True, "attr2": True})
     ])
-    test_graph.add_edges_from([(1, 2), (2, 3)])
+    graph.add_edges_from([(1, 2), (2, 3)])
+    return graph
+if __name__ == "__main__":
+    # Example usage or test code
+    test_graph = create_graph()
 
     print("Original graph:", test_graph.nodes(data=True))
     
