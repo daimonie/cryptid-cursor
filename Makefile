@@ -18,7 +18,7 @@ test:
 	docker run -v $(PWD)/container/:/opt/container \
 	-v $(PWD)/data/:/opt/container/data \
 	-v $(PWD)/notebook:/opt/container/notebook \
-	python-template poetry run pytest --color yes
+	python-template poetry run python -m pytest --color yes
 
 lab:
 	docker run -v $(PWD)/container/:/opt/container \

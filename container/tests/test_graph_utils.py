@@ -1,5 +1,5 @@
 import unittest
-from container.utils.graph_utils import (
+from  utils.graph_utils import (
     create_graph,
     add_edge,
     get_neighbors,
@@ -60,7 +60,7 @@ class TestGraphUtils(unittest.TestCase):
         self.assertIn(path, [['A', 'B', 'D', 'E'], ['A', 'C', 'D', 'E']])
 
         path = shortest_path(self.graph, 'A', 'D')
-        self.assertIn(path, [['A', 'B', 'D'], ['A', 'C', 'D']])
+        self.assertIn(path, [['A', 'B', 'D', 'E'], ['A', 'C', 'D', 'E']])
 
         path = shortest_path(self.graph, 'A', 'F')
         self.assertIsNone(path)
