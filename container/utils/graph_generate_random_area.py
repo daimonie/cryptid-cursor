@@ -9,7 +9,8 @@ def initialize_node_attributes(G: nx.Graph, attribute: str) -> None:
     - G: The networkx graph (nx.Graph).
     - attribute: The name of the attribute to be initialized.
     """
-    nx.set_node_attributes(G, {node: False for node in G.nodes}, name=attribute)
+    for node in G.nodes:
+        G.nodes[node].setdefault(attribute, False)
 
 def select_random_start_node(G: nx.Graph) -> int:
     """
@@ -59,11 +60,10 @@ def assign_attribute_to_nodes(G: nx.Graph, nodes: set, attribute: str) -> None:
     """
     # Set attribute to True for the nodes in the connected area
     nx.set_node_attributes(G, {node: True for node in nodes}, name=attribute)
-    
-    # Ensure all other nodes have the attribute set to False
+    # Ensure all other nodes have the attribute set to False if not already set
     for node in G.nodes:
         if node not in nodes:
-            G.nodes[node][attribute] = False
+            G.nodes[node].setdefault(attribute, False)
 
 def add_connected_area_attribute(G: nx.Graph, attribute: str, N: int) -> None:
     """
