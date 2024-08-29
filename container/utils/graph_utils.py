@@ -70,28 +70,31 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     Returns:
     - The enriched networkx graph with additional attributes.
     """
-    # Create a dictionary to track neighbor and neighbor-of-neighbor attributes
-    attr_summary = {node: {'neighbors': set(), 'neighbors_of_neighbors': set()} for node in graph.nodes}
-
-    # Populate the dictionary
-    for node in graph.nodes:
-        neighbors = set(graph.neighbors(node))
-        attr_summary[node]['neighbors'] = neighbors
-        for neighbor in neighbors:
-            attr_summary[node]['neighbors_of_neighbors'].update(graph.neighbors(neighbor))
-        attr_summary[node]['neighbors_of_neighbors'].discard(node)
+    # Identify boolean attributes
+    boolean_attributes = set()
+    for node, attrs in graph.nodes(data=True):
+        boolean_attributes.update(attr for attr, value in attrs.items() if isinstance(value, bool))
     
-    # Enrich the attributes
-    for node in graph.nodes:
-        node_attrs = graph.nodes[node]
-        neighbors = attr_summary[node]['neighbors']
-        neighbors_of_neighbors = attr_summary[node]['neighbors_of_neighbors']
+    # First level: neighbors
+    neighbor_updates = {}
+    for attr in boolean_attributes:
+        new_attr = f"neighbor_{attr}"
+        for node in graph.nodes:
+            neighbor_updates.setdefault(node, {})[new_attr] = any(
+                graph.nodes[neighbor].get(attr, False) for neighbor in graph.neighbors(node)
+            )
+    nx.set_node_attributes(graph, neighbor_updates)
 
-        for attr, value in node_attrs.items():
-            if isinstance(value, bool) and value:
-                graph.nodes[node][f"neighbor_has_{attr}"] = any(graph.nodes[neighbor].get(attr, False) for neighbor in neighbors)
-                graph.nodes[node][f"neighbor_of_neighbor_has_{attr}"] = any(graph.nodes[neighbor_of_neighbor].get(attr, False) for neighbor_of_neighbor in neighbors_of_neighbors)
-    
+    # Second level: neighbors of neighbors
+    neighbor_neighbor_updates = {}
+    for attr in boolean_attributes:
+        new_attr = f"neighbor_neighbor_{attr}"
+        for node in graph.nodes:
+            neighbor_neighbor_updates.setdefault(node, {})[new_attr] = any(
+                graph.nodes[neighbor].get(f"neighbor_{attr}", False) for neighbor in graph.neighbors(node)
+            )
+    nx.set_node_attributes(graph, neighbor_neighbor_updates)
+
     return graph
 
 
