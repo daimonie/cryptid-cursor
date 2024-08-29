@@ -97,11 +97,35 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     
     # First level: neighbors
     for attr in boolean_attributes:
-        nx.set_node_attributes(graph, _enrich_node_attributes_level(graph, attr, "neighbor"))
+        nx.set_node_attributes(
+            graph,
+            _enrich_node_attributes_level(
+                graph,
+                attr,
+                "neighbor"
+            )
+        )
 
     # Second level: neighbors of neighbors
     for attr in boolean_attributes:
-        nx.set_node_attributes(graph, _enrich_node_attributes_level(graph, f"neighbor_{attr}", "neighbor"))
+        nx.set_node_attributes(
+            graph,
+            _enrich_node_attributes_level(
+                graph,
+                f"neighbor_{attr}",
+                "neighbor"
+            )
+        )
+    # Third level: neighbors of neighbors
+    for attr in boolean_attributes:
+        nx.set_node_attributes(
+            graph,
+            _enrich_node_attributes_level(
+                graph,
+                f"neighbor_neighbor_{attr}",
+                "neighbor"
+            )
+        )
 
     return graph
 
