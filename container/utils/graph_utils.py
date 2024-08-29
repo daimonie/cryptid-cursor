@@ -92,10 +92,12 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     """
     # Identify boolean attributes
     boolean_attributes = set()
+    print("Now identifying boolean attributes")
     for node, attrs in graph.nodes(data=True):
         boolean_attributes.update(attr for attr, value in attrs.items() if isinstance(value, bool))
     
     # First level: neighbors
+    print("Now looping through first level: neighbors")
     for attr in boolean_attributes:
         nx.set_node_attributes(
             graph,
@@ -107,6 +109,7 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
         )
 
     # Second level: neighbors of neighbors
+    print("Now looping through second level: neighbors of neighbors")
     for attr in boolean_attributes:
         nx.set_node_attributes(
             graph,
@@ -117,6 +120,7 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
             )
         )
     # Third level: neighbors of neighbors
+    print("Now looping through third level: neighbors of neighbors of neighbors")
     for attr in boolean_attributes:
         nx.set_node_attributes(
             graph,

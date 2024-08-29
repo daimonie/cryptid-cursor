@@ -1,4 +1,4 @@
-from python:3.12.3
+FROM python:3.12.3
 
 # update the debian packages
 RUN apt-get update
@@ -27,6 +27,12 @@ RUN chmod a+rw /home
 
 # Set password for devuser (change 'password' to your desired password)
 RUN echo 'devuser:cthulu' | chpasswd
+
+# Switch to pythonuser for default operation
+USER devuser
+
+# install poetry from pypoetry.toml
+RUN poetry install
 
 # Switch to pythonuser for default operation
 USER pythonuser

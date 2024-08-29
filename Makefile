@@ -1,3 +1,5 @@
+.PHONY: install dev run test lab visualize
+
 install:
 	docker run hello-world
 	docker build  -f Dockerfile -t python-template .
