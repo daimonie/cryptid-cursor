@@ -59,6 +59,26 @@ def parse_code_to_graph(graph_hash: str, serialized_data_store: dict) -> nx.Grap
     return graph
 
 
+def _enrich_node_attributes_level(graph: nx.Graph, attr: str, prefix: str) -> dict:
+    """
+    Helper function to enrich node attributes for a single level.
+    
+    Parameters:
+    - graph: A networkx graph (nx.Graph)
+    - attr: The attribute to check for
+    - prefix: The prefix for the new attribute
+    
+    Returns:
+    - A dictionary of updates for the graph nodes
+    """
+    updates = {}
+    new_attr = f"{prefix}_{attr}"
+    for node in graph.nodes:
+        updates[node] = {new_attr: any(
+            graph.nodes[neighbor].get(attr, False) for neighbor in graph.neighbors(node)
+        )}
+    return updates
+
 def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     """
     Enriches the graph by adding attributes to each node indicating whether
@@ -76,24 +96,12 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
         boolean_attributes.update(attr for attr, value in attrs.items() if isinstance(value, bool))
     
     # First level: neighbors
-    neighbor_updates = {}
     for attr in boolean_attributes:
-        new_attr = f"neighbor_{attr}"
-        for node in graph.nodes:
-            neighbor_updates.setdefault(node, {})[new_attr] = any(
-                graph.nodes[neighbor].get(attr, False) for neighbor in graph.neighbors(node)
-            )
-    nx.set_node_attributes(graph, neighbor_updates)
+        nx.set_node_attributes(graph, _enrich_node_attributes_level(graph, attr, "neighbor"))
 
     # Second level: neighbors of neighbors
-    neighbor_neighbor_updates = {}
     for attr in boolean_attributes:
-        new_attr = f"neighbor_neighbor_{attr}"
-        for node in graph.nodes:
-            neighbor_neighbor_updates.setdefault(node, {})[new_attr] = any(
-                graph.nodes[neighbor].get(f"neighbor_{attr}", False) for neighbor in graph.neighbors(node)
-            )
-    nx.set_node_attributes(graph, neighbor_neighbor_updates)
+        nx.set_node_attributes(graph, _enrich_node_attributes_level(graph, f"neighbor_{attr}", "neighbor"))
 
     return graph
 
