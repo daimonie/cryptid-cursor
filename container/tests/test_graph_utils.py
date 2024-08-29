@@ -53,7 +53,7 @@ class TestGraphUtils(unittest.TestCase):
 
     def test_enrich_node_attributes(self):
         enriched = enrich_node_attributes(self.test_graph)
-        # raise Exception(enriched.nodes['a'])
+        raise Exception(enriched.nodes['a'])
         self.assertTrue(enriched.nodes['a']['neighbor_has_attr2'])
         self.assertFalse(enriched.nodes['a']['neighbor_has_attr1'])
         self.assertTrue(enriched.nodes['a']['neighbor_of_has_neighbor_has_attr1'])

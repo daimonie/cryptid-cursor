@@ -59,30 +59,10 @@ def parse_code_to_graph(graph_hash: str, serialized_data_store: dict) -> nx.Grap
     return graph
 
 
-def _enrich_single_node_attributes(graph: nx.Graph, node_id: int, attr: str, prefix: str) -> dict:
-    """
-    Checks if neighbors of the node have the specified attribute set to True,
-    and sets a new attribute with the given prefix if any neighbor has it.
-
-    Parameters:
-    - graph: A networkx graph (nx.Graph)
-    - node_id: The ID of the node to enrich
-    - attr: The attribute to check for
-    - prefix: The prefix to use for the new attribute
-
-    Returns:
-    - A dictionary with the new attribute (if any)
-    """
-    neighbors = graph.neighbors(node_id)
-    new_attr = f"{prefix}_has_{attr}"
-    return {new_attr: any(graph.nodes[n].get(attr, False) for n in neighbors)}
-
-
 def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     """
     Enriches the graph by adding attributes to each node indicating whether
-    any neighbors, neighbors of neighbors, or neighbors of neighbors of neighbors
-    have a certain boolean attribute set to True.
+    any neighbors or neighbors of neighbors have a certain boolean attribute set to True.
     
     Parameters:
     - graph: A networkx graph (nx.Graph) with boolean attributes on nodes (one-hot encoded).
@@ -90,26 +70,28 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     Returns:
     - The enriched networkx graph with additional attributes.
     """
-    def enrich_level(prefix, attr_prefix):
-        new_attributes = {node: {} for node in graph.nodes}
-        for attr in attributes_to_check:
-            if attr.startswith(attr_prefix):
-                for node in graph.nodes:
-                    new_attributes[node].update(_enrich_single_node_attributes(graph, node, attr, prefix))
-        nx.set_node_attributes(graph, new_attributes)
+    # Create a dictionary to track neighbor and neighbor-of-neighbor attributes
+    attr_summary = {node: {'neighbors': set(), 'neighbors_of_neighbors': set()} for node in graph.nodes}
 
-    # First level: neighbors
-    attributes_to_check = [attr for node in graph.nodes for attr, value in graph.nodes[node].items() if isinstance(value, bool)]
-    enrich_level("neighbor", "")
+    # Populate the dictionary
+    for node in graph.nodes:
+        neighbors = set(graph.neighbors(node))
+        attr_summary[node]['neighbors'] = neighbors
+        for neighbor in neighbors:
+            attr_summary[node]['neighbors_of_neighbors'].update(graph.neighbors(neighbor))
+        attr_summary[node]['neighbors_of_neighbors'].discard(node)
+    
+    # Enrich the attributes
+    for node in graph.nodes:
+        node_attrs = graph.nodes[node]
+        neighbors = attr_summary[node]['neighbors']
+        neighbors_of_neighbors = attr_summary[node]['neighbors_of_neighbors']
 
-    # Second level: neighbors of neighbors
-    attributes_to_check = [attr for node in graph.nodes for attr in graph.nodes[node].keys() if attr.startswith("neighbor_has_")]
-    enrich_level("neighbor_of", "neighbor_has_")
-
-    # Third level: neighbors of neighbors of neighbors
-    attributes_to_check = [attr for node in graph.nodes for attr in graph.nodes[node].keys() if attr.startswith("neighbor_of_neighbor_has_")]
-    enrich_level("neighbor_of_neighbor_of", "neighbor_of_neighbor_has_")
-
+        for attr, value in node_attrs.items():
+            if isinstance(value, bool) and value:
+                graph.nodes[node][f"neighbor_has_{attr}"] = any(graph.nodes[neighbor].get(attr, False) for neighbor in neighbors)
+                graph.nodes[node][f"neighbor_of_neighbor_has_{attr}"] = any(graph.nodes[neighbor_of_neighbor].get(attr, False) for neighbor_of_neighbor in neighbors_of_neighbors)
+    
     return graph
 
 
@@ -137,12 +119,13 @@ def filter_nodes_by_attributes(graph: nx.Graph, *args) -> list:
 def create_graph():
     graph = nx.Graph()
     graph.add_nodes_from([
-        ("a", {"attr1": True, "attr2": False}),
-        ("b", {"attr1": False, "attr2": True}),
-        ("c", {"attr1": True, "attr2": True})
+        ('a', {"attr1": True, "attr2": False}),
+        ('b', {"attr1": False, "attr2": True}),
+        ('c', {"attr1": True, "attr2": True})
     ])
-    graph.add_edges_from([("a", "b"), ("b", "c")])
+    graph.add_edges_from([('a', 'b'), ('b', 'c')])
     return graph
+
 if __name__ == "__main__":
     # Example usage or test code
     test_graph = create_graph()
