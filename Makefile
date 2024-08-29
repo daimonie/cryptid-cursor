@@ -27,3 +27,10 @@ lab:
 	-p 8888:8888 \
 	python-template poetry run jupyter lab --notebook-dir /opt/container/notebook \
 	--no-browser --ip="0.0.0.0"
+
+visualize:
+	docker run -v $(PWD)/container/:/opt/container \
+	--user devuser \
+	-v $(PWD)/data/:/opt/container/data \
+	-v $(PWD)/notebook:/opt/container/notebook \
+	python-template poetry run python visualize_board.py
