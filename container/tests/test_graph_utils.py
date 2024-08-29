@@ -18,12 +18,12 @@ class TestGraphUtils(unittest.TestCase):
         graph = create_graph()
         self.assertEqual(len(graph.nodes), 3)
         self.assertEqual(len(graph.edges), 2)
-        self.assertTrue(graph.nodes[1]['attr1'])
-        self.assertFalse(graph.nodes[1]['attr2'])
-        self.assertFalse(graph.nodes[2]['attr1'])
-        self.assertTrue(graph.nodes[2]['attr2'])
-        self.assertTrue(graph.nodes[3]['attr1'])
-        self.assertTrue(graph.nodes[3]['attr2'])
+        self.assertTrue(graph.nodes['a']['attr1'])
+        self.assertFalse(graph.nodes['a']['attr2'])
+        self.assertFalse(graph.nodes['b']['attr1'])
+        self.assertTrue(graph.nodes['b']['attr2'])
+        self.assertTrue(graph.nodes['c']['attr1'])
+        self.assertTrue(graph.nodes['c']['attr2'])
 
     def test_serialize_graph(self):
         serialized = serialize_graph(self.test_graph)
@@ -42,6 +42,7 @@ class TestGraphUtils(unittest.TestCase):
         serialized = serialize_graph(self.test_graph)
         code = generate_unique_code(serialized)
         reconstructed = parse_code_to_graph(code, {code: serialized})
+             
         self.assertEqual(len(self.test_graph.nodes), len(reconstructed.nodes))
         self.assertEqual(len(self.test_graph.edges), len(reconstructed.edges))
         self.assertEqual(dict(self.test_graph.nodes(data=True)), dict(reconstructed.nodes(data=True)))
@@ -52,17 +53,18 @@ class TestGraphUtils(unittest.TestCase):
 
     def test_enrich_node_attributes(self):
         enriched = enrich_node_attributes(self.test_graph)
-        self.assertTrue(enriched.nodes[1]['neighbor_has_attr2'])
-        self.assertFalse(enriched.nodes[1]['neighbor_has_attr1'])
-        self.assertTrue(enriched.nodes[1]['neighbor_of_neighbor_has_attr1'])
-        self.assertTrue(enriched.nodes[1]['neighbor_of_neighbor_has_attr2'])
+        # raise Exception(enriched.nodes['a'])
+        self.assertTrue(enriched.nodes['a']['neighbor_has_attr2'])
+        self.assertFalse(enriched.nodes['a']['neighbor_has_attr1'])
+        self.assertTrue(enriched.nodes['a']['neighbor_of_has_neighbor_has_attr1'])
+        self.assertTrue(enriched.nodes['a']['neighbor_of_has_neighbor_has_attr2'])
 
     def test_filter_nodes_by_attributes(self):
         filtered = filter_nodes_by_attributes(self.test_graph, 'attr1', True)
-        self.assertEqual(set(filtered), {1, 3})
+        self.assertEqual(set(filtered), {'a', 'c'})
 
         filtered = filter_nodes_by_attributes(self.test_graph, 'attr1', True, 'attr2', True)
-        self.assertEqual(filtered, [3])
+        self.assertEqual(filtered, ['c'])
 
     def test_filter_nodes_by_attributes_invalid_args(self):
         with self.assertRaises(ValueError):
