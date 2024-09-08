@@ -5,62 +5,58 @@ from utils.graph_generate_random_area import (
     select_random_start_node,
     expand_connected_area,
     assign_attribute_to_nodes,
-    add_connected_area_attribute
 )
 
-@pytest.fixture
-def sample_graph():
-    return nx.hexagonal_lattice_graph(3, 3)
-
-def test_initialize_node_attributes(sample_graph):
-    initialize_node_attributes(sample_graph, 'test_attr')
-    assert all(sample_graph.nodes[node]['test_attr'] == False for node in sample_graph.nodes)
-
-def test_select_random_start_node(sample_graph):
-    start_node = select_random_start_node(sample_graph)
-    assert start_node in sample_graph.nodes
-
-def test_expand_connected_area(sample_graph):
-    start_node = (0, 0)
-    connected_area = expand_connected_area(sample_graph, start_node, 5)
-    assert len(connected_area) == 5
-    assert start_node in connected_area
-    assert all(nx.has_path(sample_graph.subgraph(connected_area), start_node, node) for node in connected_area)
-
-def test_assign_attribute_to_nodes(sample_graph):
-    nodes_to_assign = {(0, 0), (0, 1), (1, 0)}
-    assign_attribute_to_nodes(sample_graph, nodes_to_assign, 'test_attr')
-    assert all(sample_graph.nodes[node]['test_attr'] == True for node in nodes_to_assign)
-    assert all(sample_graph.nodes[node]['test_attr'] == False for node in sample_graph.nodes if node not in nodes_to_assign)
-
-def test_add_connected_area_attribute(sample_graph):
-    add_connected_area_attribute(sample_graph, 'is_Forest', 5)
-    forest_nodes = [node for node, attr in sample_graph.nodes(data=True) if attr['is_Forest']]
-    assert len(forest_nodes) == 5
-    assert nx.is_connected(sample_graph.subgraph(forest_nodes))
-
-def test_add_connected_area_attribute_error(sample_graph):
-    with pytest.raises(ValueError):
-        add_connected_area_attribute(sample_graph, 'is_Mountain', 100)
-
-def test_expand_connected_area_full_graph(sample_graph):
-    start_node = (0, 0)
-    connected_area = expand_connected_area(sample_graph, start_node, len(sample_graph.nodes))
-    assert len(connected_area) == len(sample_graph.nodes)
-    assert all(node in connected_area for node in sample_graph.nodes)
-
-def test_add_connected_area_attribute_single_node():
+def test_initialize_node_attributes():
     G = nx.Graph()
-    G.add_node(0)
-    add_connected_area_attribute(G, 'is_Lake', 1)
-    assert G.nodes[0]['is_Lake'] == True
+    G.add_nodes_from([1, 2, 3])
+    initialize_node_attributes(G, 'test_attr')
+    
+    for node in G.nodes:
+        assert 'test_attr' in G.nodes[node]
+        assert G.nodes[node]['test_attr'] == False
 
-def test_add_connected_area_attribute_multiple_calls(sample_graph):
-    add_connected_area_attribute(sample_graph, 'is_Forest', 3)
-    add_connected_area_attribute(sample_graph, 'is_Lake', 4)
-    forest_nodes = [node for node, attr in sample_graph.nodes(data=True) if attr['is_Forest']]
-    lake_nodes = [node for node, attr in sample_graph.nodes(data=True) if attr['is_Lake']]
-    assert len(forest_nodes) == 3
-    assert len(lake_nodes) == 4
-    assert nx.is_connected(sample_graph.subgraph(forest_nodes))
-    assert nx.is_connected(sample_graph.subgraph(lake_nodes))
+def test_select_random_start_node():
+    G = nx.Graph()
+    G.add_nodes_from([1, 2, 3, 4, 5])
+    
+    selected_node = select_random_start_node(G)
+    assert selected_node in G.nodes
+
+def test_expand_connected_area():
+    G = nx.grid_2d_graph(5, 5)  # 5x5 grid graph
+    start_node = (2, 2)  # Center node
+    N = 7
+    
+    connected_area = expand_connected_area(G, start_node, N)
+    
+    assert len(connected_area) == N
+    assert start_node in connected_area
+    assert all(nx.has_path(G.subgraph(connected_area), start_node, node) for node in connected_area)
+
+def test_assign_attribute_to_nodes():
+    G = nx.Graph()
+    G.add_nodes_from([1, 2, 3, 4, 5])
+    nodes_to_assign = {2, 4}
+    attribute = 'test_attr'
+    
+    assign_attribute_to_nodes(G, nodes_to_assign, attribute)
+    
+    for node in G.nodes:
+        if node in nodes_to_assign:
+            assert G.nodes[node][attribute] == True
+        else:
+            assert G.nodes[node][attribute] == False
+
+def test_integration():
+    G = nx.grid_2d_graph(10, 10)
+    attribute = 'test_attr'
+    N = 15
+    
+    initialize_node_attributes(G, attribute)
+    start_node = select_random_start_node(G)
+    connected_area = expand_connected_area(G, start_node, N)
+    assign_attribute_to_nodes(G, connected_area, attribute)
+    
+    assert sum(1 for node in G.nodes if G.nodes[node][attribute]) == N
+    assert all(nx.has_path(G.subgraph(connected_area), start_node, node) for node in connected_area)

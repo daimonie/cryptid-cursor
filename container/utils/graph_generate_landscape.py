@@ -146,6 +146,9 @@ def add_hexagonal_edges(G: nx.Graph, rows: int, cols: int) -> None:
             node = (row, col)
             add_edges_for_node(G, node, rows, cols)
 
+def get_terrain_types():
+    return ['swamp', 'forest', 'water', 'mountain', 'desert']
+
 
 def generate_hexagonal_grid_graph(rows, cols):
     """
@@ -160,7 +163,8 @@ def generate_hexagonal_grid_graph(rows, cols):
     - A networkx graph (nx.Graph) representing the hexagonal grid with assigned boolean attributes.
     """
     G = nx.Graph()
-    attributes = ['is_swamp', 'is_forest', 'is_water', 'is_mountain', 'is_desert']
+    
+    attributes = [f'is_{terrain}' for terrain in get_terrain_types()]
     
     # Add nodes with random attributes
     for row in range(rows):

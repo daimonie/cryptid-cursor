@@ -74,7 +74,7 @@ def _enrich_node_attributes_level(graph: nx.Graph, attr: str, prefix: str) -> di
     updates = {}
     new_attr = f"{prefix}_{attr}"
     for node in graph.nodes:
-        updates[node] = {new_attr: any(
+        updates[node] = {new_attr: graph.nodes[node].get(attr, False) or any(
             graph.nodes[neighbor].get(attr, False) for neighbor in graph.neighbors(node)
         )}
     return updates
