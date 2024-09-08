@@ -132,17 +132,16 @@ def generate_structure_combinations():
 def select_random_structures(all_structures, min_structures, max_structures):
     num_structures = random.randint(min_structures, max_structures)
     return random.sample(all_structures, num_structures)
+def try_location(G, rows, cols, all_structures):
+    row = random.randint(0, rows - 1)
+    col = random.randint(0, cols - 1)
+    print(all_structures)
+    if not any(G.nodes[(row, col)].get(s, False) for s in all_structures):
+        return row, col
+    return None
 
 def find_empty_location(G, rows, cols, all_structures):
-    def try_location():
-        row = random.randint(0, rows - 1)
-        col = random.randint(0, cols - 1)
-        print(all_structures)
-        if not any(G.nodes[(row, col)].get(s, False) for s in all_structures):
-            return row, col
-        return None
-
-    result = try_location()
+    result = try_location(G, rows, cols, all_structures)
     if result:
         return result
     else:
