@@ -146,6 +146,7 @@ def add_hexagonal_edges(G: nx.Graph, rows: int, cols: int) -> None:
             node = (row, col)
             add_edges_for_node(G, node, rows, cols)
 
+
 def generate_hexagonal_grid_graph(rows, cols):
     """
     Generate a hexagonal grid graph where each node is assigned one of the boolean flags:
@@ -159,7 +160,7 @@ def generate_hexagonal_grid_graph(rows, cols):
     - A networkx graph (nx.Graph) representing the hexagonal grid with assigned boolean attributes.
     """
     G = nx.Graph()
-    attributes = ['is_Swamp', 'is_Forest', 'is_Water', 'is_Mountain', 'is_Desert']
+    attributes = ['is_swamp', 'is_forest', 'is_water', 'is_mountain', 'is_desert']
     
     # Add nodes with random attributes
     for row in range(rows):
