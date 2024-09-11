@@ -126,8 +126,7 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
                 f"neighbor_neighbor_{attr}",
                 "neighbor"
             )
-        )
-
+        ) 
     return graph
 
 

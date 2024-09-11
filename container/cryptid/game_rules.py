@@ -36,7 +36,7 @@ def generate_all_hints() -> Dict[str, List[str]]:
             *[(f"{color}", f"neighbor_{color}", f"neighbor_neighbor_{color}", f"neighbor_neighbor_neighbor_{color}")  for color in colors]
         ]
     }
-    
+    raise Exception("I stills ee issues in the generated results with within 2/3")
 
     for key in categories:
         categories[key] = [(item,) if isinstance(item, str) else item for item in categories[key]]
