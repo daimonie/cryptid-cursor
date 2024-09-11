@@ -25,18 +25,17 @@ def generate_all_hints() -> Dict[str, List[str]]:
             for t1, t2 in itertools.combinations(get_terrain_types(), 2)
         ],
         "within_one": [
-            *[(f"is_{terrain}", f"neighbor_{terrain}") for terrain in get_terrain_types()],
+            *[(f"is_{terrain}", f"neighbor_is_{terrain}") for terrain in get_terrain_types()],
             *[(f"is_{animal.lower()}", f"neighbor_{animal.lower()}") for animal in get_all_animals()]
         ],
         "within_two": [
-            *[(f"is_{animal}", f"neighbor_{animal}", f"neighbor_neighbor_{animal}") for animal in get_all_animals()],
+            *[(f"is_{animal}", f"neighbor_is_{animal}", f"neighbor_neighbor_{animal}") for animal in get_all_animals()],
             *[(f"{structure}", f"neighbor_{structure}", f"neighbor_neighbor_{structure}") for structure in structures]
         ],
         "within_three": [
             *[(f"{color}", f"neighbor_{color}", f"neighbor_neighbor_{color}", f"neighbor_neighbor_neighbor_{color}")  for color in colors]
         ]
-    }
-    raise Exception("I stills ee issues in the generated results with within 2/3")
+    } 
 
     for key in categories:
         categories[key] = [(item,) if isinstance(item, str) else item for item in categories[key]]

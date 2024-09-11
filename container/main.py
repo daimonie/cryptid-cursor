@@ -69,3 +69,8 @@ if __name__ == "__main__":
             print(f"Hexagonal grid map plotted for iteration {iteration}")
             import time
             time.sleep(3)
+        raise Exception("""
+        I still see issues in the generated results with within 2/3. 
+        Next up, make sure it stores the map for each iteration/image 
+        and write a file where we can load a map and eval
+        """)
