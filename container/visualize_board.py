@@ -17,7 +17,8 @@ from cryptid.board import (
 if __name__ == "__main__":
     # Example usage
     rows, cols = 11,8
-    G = generate_game_map(rows, cols)
+    generator = np.random.default_rng()
+    G = generate_game_map(generator, rows, cols)
     # Select a random node from the graph
     random_node = random.choice(list(G.nodes()))
 

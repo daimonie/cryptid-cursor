@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
-import random
 import seaborn as sns
 
 from matplotlib.patches import RegularPolygon
@@ -27,7 +26,6 @@ def create_hex_patch(x, y, hex_size, color):
     """Create a hexagon patch for matplotlib."""
     return RegularPolygon((x, y), numVertices=6, radius=hex_size,
                           orientation=0, facecolor=color, edgecolor='k')
-
 def create_inner_hex_patch(x, y, hex_size, is_bear):
     """Create an inner hexagon patch for bear or cougar areas."""
     inner_hex_size = hex_size * 0.9
@@ -35,6 +33,25 @@ def create_inner_hex_patch(x, y, hex_size, is_bear):
     return RegularPolygon((x, y), numVertices=6, radius=inner_hex_size,
                           orientation=0, facecolor='none', 
                           edgecolor=edge_color, linestyle='--', linewidth=3)
+
+def create_inner_octopus_patch(x, y, hex_size):
+    """Create an inner octopus-like patch."""
+    inner_size = hex_size * 0.7
+    
+    # Create the main body (circle)
+    body = plt.Circle((x, y), inner_size * 0.5, facecolor='none', 
+                      edgecolor='purple', linestyle='-', linewidth=2)
+    
+    # Create tentacles (8 lines radiating from the center)
+    tentacles = []
+    for angle in range(0, 360, 45):
+        dx = inner_size * np.cos(np.radians(angle))
+        dy = inner_size * np.sin(np.radians(angle))
+        tentacle = plt.Line2D([x, x+dx], [y, y+dy], color='purple', 
+                              linestyle='-', linewidth=2)
+        tentacles.append(tentacle)
+    
+    return [body] + tentacles
 
 def get_node_color(data, color_map):
     """Determine the color of a node based on its attributes."""
@@ -55,7 +72,7 @@ def setup_plot(rows, cols, hex_size):
     ax.axis('off')
     return fig, ax
 
-def plot_hexagonal_grid(G, rows, cols):
+def plot_hexagonal_grid(G, rows, cols, cryptid_markers=[], hints=[], prefix=""):
     color_map = {
         'is_desert': 'yellow',
         'is_water': 'blue',
@@ -74,12 +91,10 @@ def plot_hexagonal_grid(G, rows, cols):
 
         filterattr = 'neighbor_standing_stone_blue'
         if data.get(filterattr):
-            print(f"Coloring node {node} red because: {filterattr}")
             color = 'red'
 
         hex_patch = create_hex_patch(x, y, hex_size, color)
-        ax.add_patch(hex_patch)
-        
+        ax.add_patch(hex_patch) 
         if data.get('is_bear') or data.get('is_cougar'):
             inner_hex = create_inner_hex_patch(x, y, hex_size, data.get('is_bear'))
             ax.add_patch(inner_hex)
@@ -88,11 +103,44 @@ def plot_hexagonal_grid(G, rows, cols):
         structure_patch = add_structures_to_plot(ax, data, x, y, hex_size)
         if structure_patch:
             ax.add_patch(structure_patch)
-
-    plt.title('Hexagonal Grid Map')
+        if  node in cryptid_markers: 
+                create_inner_octopus_patch(ax, x, y, hex_size)
+    title = f'Hexagonal Grid Map {prefix}'
+    if hints:
+        title += f'\nHints: {", ".join(str(hint) for hint in hints)}'
+    if cryptid_markers:
+        title += f'\nCryptid Markers: {len(cryptid_markers)}'
+    plt.title(title)
     plt.tight_layout()
-    plt.savefig('hexagonal_grid_map.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'{prefix}hexagonal_grid_map.png', dpi=300, bbox_inches='tight')
     plt.close()
+
+def create_inner_octopus_patch(ax, x, y, hex_size):
+    """Create a small Hydra symbol from Marvel's Avengers."""
+    marker_y = y + hex_size * 0.6
+    marker_x = x - hex_size * 0.4
+    
+    # Create Hydra skull
+    skull = ax.add_patch(plt.Circle((marker_x, marker_y), radius=hex_size*0.2, 
+                                    facecolor='red', edgecolor='black', zorder=3))
+    # Add octopus tentacles
+    tentacle_start_y = marker_y - hex_size * 0.1
+    for i in range(8):
+        angle = np.pi + (i * np.pi / 8)  # Angles from pi to 2pi (lower half)
+        end_x = marker_x + hex_size * 0.3 * np.cos(angle)
+        end_y = marker_y + hex_size * 0.3 * np.sin(angle)
+        ax.plot([marker_x, end_x], [tentacle_start_y, end_y], color='red', linewidth=2, zorder=2)
+
+    # Add Hydra eyes
+    eye_offset = hex_size * 0.08
+    left_eye = ax.add_patch(plt.Circle((marker_x - eye_offset, marker_y + eye_offset), 
+                                       radius=hex_size*0.03, facecolor='white', edgecolor='black', zorder=4))
+    right_eye = ax.add_patch(plt.Circle((marker_x + eye_offset, marker_y + eye_offset), 
+                                        radius=hex_size*0.03, facecolor='white', edgecolor='black', zorder=4))
+
+# Note: To install matplotlib with poetry, run the following command in your terminal:
+# poetry add matplotlib
+
 def add_structures_to_plot(ax, data, x, y, hex_size):
     """Add structures (standing stones or abandoned shacks) to the plot."""
     for structure in ['standing_stone', 'abandoned_shack']:
@@ -105,7 +153,6 @@ def add_structures_to_plot(ax, data, x, y, hex_size):
 
 def create_structure_patch(structure, x, y, hex_size, color):
     """Create a patch for a structure (standing stone or abandoned shack)."""
-    print(f"Created a structure {structure} of color {color} at {x}, {y}")
     # Displace the structure to the left of the node ID label
     displaced_x = x - hex_size * 0.4  # Adjust this value as needed
     color_map = {
@@ -128,23 +175,24 @@ def generate_structure_color_combinations():
     structures, colors = generate_all_structures()
     return [f"{s}_{c}" for s in structures for c in colors]
 
-def select_random_structures(all_structures, min_structures, max_structures):
-    num_structures = random.randint(min_structures, max_structures)
-    return random.sample(all_structures, num_structures)
-def try_location(G, rows, cols, all_structures):
-    row = random.randint(0, rows - 1)
-    col = random.randint(0, cols - 1)
-    print(all_structures)
+def select_random_structures(generator, all_structures, min_structures, max_structures):
+    num_structures = generator.integers(min_structures, max_structures + 1)
+    return generator.choice(all_structures, size=num_structures, replace=False).tolist()
+
+def try_location(generator, G, rows, cols, all_structures):
+    row = generator.integers(0, rows)
+    col = generator.integers(0, cols)
+    
     if not any(G.nodes[(row, col)].get(s, False) for s in all_structures):
         return row, col
     return None
 
-def find_empty_location(G, rows, cols, all_structures):
-    result = try_location(G, rows, cols, all_structures)
+def find_empty_location(generator, G, rows, cols, all_structures):
+    result = try_location(generator, G, rows, cols, all_structures)
     if result:
         return result
     else:
-        return find_empty_location(G, rows, cols, all_structures)
+        return find_empty_location(generator, G, rows, cols, all_structures)
 
 def add_structure_to_graph(G, structure, location):
     row, col = location
@@ -155,11 +203,12 @@ def add_structure_to_graph(G, structure, location):
     G.nodes[(row, col)][structure_type] = True
     G.nodes[(row, col)][color] = True
 
-def add_random_structures(G, rows, cols, min_structures=4, max_structures=6):
+def add_random_structures(generator, G, rows, cols, min_structures=4, max_structures=6):
     """
     Add random structures to the hexagonal grid.
     
     Args:
+    generator (numpy.random.Generator): The random number generator.
     G (networkx.Graph): The hexagonal grid graph.
     rows (int): Number of rows in the grid.
     cols (int): Number of columns in the grid.
@@ -171,12 +220,11 @@ def add_random_structures(G, rows, cols, min_structures=4, max_structures=6):
     for node in G.nodes:
         for structure in all_structures:
             G.nodes[node][structure] = False
-    selected_structures = select_random_structures(all_structures, min_structures, max_structures)
+    selected_structures = select_random_structures(generator, all_structures, min_structures, max_structures)
     
-    print("Selected structures:", selected_structures)
 
     for structure in selected_structures:
-        location = find_empty_location(G, rows, cols, all_structures)
+        location = find_empty_location(generator, G, rows, cols, all_structures)
         add_structure_to_graph(G, structure, location)
 
 
@@ -189,28 +237,22 @@ def get_all_animals():
 def get_terrain_types():
     return ['forest', 'desert', 'water', 'mountain', 'swamp']
 
-def generate_game_map(rows, cols):
-    print("Generating hexagonal grid graph...")
+def generate_game_map(generator, rows, cols):
     G = generate_hexagonal_grid_graph(rows, cols)
-    print("Adding animal areas...")
     # Add animal areas
     for animal in get_all_animals():
-        print(f"Adding {animal} areas...")
         add_connected_area_attribute(G, f'is_{animal.lower()}', 2)
         add_connected_area_attribute(G, f'is_{animal.lower()}', 3)
 
-    print("Adding random structures to the board...")
     # Add random structures to the board
-    add_random_structures(G, rows, cols)
+    add_random_structures(generator, G, rows, cols)
 
-    print("Generating structure combinations...")
     # Get all structure attributes
     all_structures = generate_structure_color_combinations()
     
     
     all_attrs = [f'is_{animal}' for animal in get_all_animals()] + all_structures
 
-    print("Enriching node attributes for all structures...")
     # Enrich node attributes for all structures
     
     G = enrich_node_attributes(G)
