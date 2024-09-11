@@ -1,17 +1,20 @@
 import pytest
 import networkx as nx
+import numpy as np
 from cryptid.board import (
     generate_game_map,
     add_random_structures,
     enrich_node_attributes,
     generate_structure_color_combinations,
     get_all_animals,
-    get_terrain_types
+    get_terrain_types,
+    generate_all_structures
 )
 
 def test_generate_game_map():
     rows, cols = 5, 5
-    G = generate_game_map(rows, cols)
+    generator = np.random.default_rng()
+    G = generate_game_map(generator, rows, cols)
     
     assert isinstance(G, nx.Graph)
     assert len(G.nodes) == rows * cols
@@ -23,10 +26,13 @@ def test_generate_game_map():
 
 def test_add_random_structures():
     G = nx.grid_2d_graph(5, 5)
-    add_random_structures(G, 5, 5)
+
+    generator = np.random.default_rng()
+
+    add_random_structures(generator, G, 5, 5)
     
-    structures = generate_structure_color_combinations()
-    structure_count = sum(1 for node in G.nodes for structure in structures if G.nodes[node].get(structure, False))
+    structures, colors = generate_all_structures()
+    structure_count = sum(1 for node in G.nodes for structure in structures for color in colors if G.nodes[node].get(f"{structure}_{color}", False))
     
     assert 4 <= structure_count <= 6  # min_structures=4, max_structures=6
 

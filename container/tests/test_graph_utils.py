@@ -31,6 +31,99 @@ class TestGraphUtils(unittest.TestCase):
         reconstructed = parse_code_to_graph(code, {code: serialized})
         self.assertEqual(list(self.test_graph.nodes()), list(reconstructed.nodes()))
         self.assertEqual(list(self.test_graph.edges()), list(reconstructed.edges()))
+    def test_line_graph_attributes(self):
+        G = nx.Graph()
+        G.add_nodes_from([
+            ('A', {"is_swamp": True}),
+            ('B', {"is_forest": True}),
+            ('C', {"is_mountain": True}),
+            ('D', {"is_desert": True})
+        ])
+        G.add_edges_from([('A', 'B'), ('B', 'C'), ('C', 'D')])
+
+        self.assertTrue(G.nodes['A']['is_swamp'])
+        self.assertTrue(G.nodes['B']['is_forest'])
+        self.assertTrue(G.nodes['C']['is_mountain'])
+        self.assertTrue(G.nodes['D']['is_desert'])
+        with self.assertRaises(KeyError):
+            G.nodes['A']['is_forest']
+        with self.assertRaises(KeyError):
+            G.nodes['B']['is_swamp']
+        with self.assertRaises(KeyError):
+            G.nodes['C']['is_desert']
+        with self.assertRaises(KeyError):
+            G.nodes['D']['is_mountain']
+
+        enriched = enrich_node_attributes(G)
+        # Test direct attributes
+        self.assertTrue(enriched.nodes['A']['is_swamp'])
+        self.assertTrue(enriched.nodes['B']['is_forest'])
+        self.assertTrue(enriched.nodes['C']['is_mountain'])
+        self.assertTrue(enriched.nodes['D']['is_desert'])
+        with self.assertRaises(KeyError):
+            enriched.nodes['A']['is_forest']
+        with self.assertRaises(KeyError):
+            enriched.nodes['B']['is_swamp']
+        with self.assertRaises(KeyError):
+            enriched.nodes['C']['is_desert']
+        with self.assertRaises(KeyError):
+            enriched.nodes['D']['is_mountain']
+        # Test neighbor attributes A
+        self.assertTrue(enriched.nodes['A']['neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_is_swamp']) 
+        self.assertFalse(enriched.nodes['A']['neighbor_is_desert']) 
+        self.assertFalse(enriched.nodes['A']['neighbor_is_mountain']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_is_mountain'])
+        self.assertFalse(enriched.nodes['A']['neighbor_neighbor_is_desert']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['A']['neighbor_neighbor_neighbor_is_desert']) 
+
+        # Test neighbor attributes B
+        self.assertTrue(enriched.nodes['B']['neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_is_mountain']) 
+        self.assertFalse(enriched.nodes['B']['neighbor_is_desert']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_is_desert']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['B']['neighbor_neighbor_neighbor_is_desert']) 
+
+        # Test neighbor attributes C
+        self.assertTrue(enriched.nodes['C']['neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_is_mountain']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_is_desert']) 
+        self.assertFalse(enriched.nodes['C']['neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_is_desert']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['C']['neighbor_neighbor_neighbor_is_desert']) 
+
+        # Test neighbor attributes D
+        self.assertTrue(enriched.nodes['D']['neighbor_is_mountain']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_is_desert']) 
+        self.assertFalse(enriched.nodes['D']['neighbor_is_forest']) 
+        self.assertFalse(enriched.nodes['D']['neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_is_forest']) 
+        self.assertFalse(enriched.nodes['D']['neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_is_desert']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_neighbor_is_swamp']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_neighbor_is_forest']) 
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_neighbor_is_mountain'])
+        self.assertTrue(enriched.nodes['D']['neighbor_neighbor_neighbor_is_desert']) 
+ 
 
     def test_enrich_node_attributes(self):
         enriched = enrich_node_attributes(self.test_graph)
