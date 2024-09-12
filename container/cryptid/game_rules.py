@@ -26,10 +26,10 @@ def generate_all_hints() -> Dict[str, List[str]]:
         ],
         "within_one": [
             *[(f"is_{terrain}", f"neighbor_is_{terrain}") for terrain in get_terrain_types()],
-            *[(f"is_{animal.lower()}", f"neighbor_{animal.lower()}") for animal in get_all_animals()]
+            *[(f"is_{animal.lower()}", f"neighbor_is_{animal.lower()}") for animal in get_all_animals()]
         ],
         "within_two": [
-            *[(f"is_{animal}", f"neighbor_is_{animal}", f"neighbor_neighbor_{animal}") for animal in get_all_animals()],
+            *[(f"is_{animal}", f"neighbor_is_{animal}", f"neighbor_neighbor_is_{animal}") for animal in get_all_animals()],
             *[(f"{structure}", f"neighbor_{structure}", f"neighbor_neighbor_{structure}") for structure in structures]
         ],
         "within_three": [

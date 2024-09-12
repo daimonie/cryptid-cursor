@@ -57,32 +57,35 @@ def parse_code_to_graph(graph_hash: str, serialized_data_store: dict) -> nx.Grap
     graph.add_edges_from(graph_data["edges"])
 
     return graph
-
-
-def _enrich_node_attributes_level(graph: nx.Graph, attr: str, prefix: str) -> dict:
+def update_neighbors_with_prefix(graph: nx.Graph, attr: str, prefix: str, levels: int = 3) -> None:
     """
-    Helper function to enrich node attributes for a single level.
+    Update nodes with prefixed attributes based on the presence of the attribute in neighboring nodes.
     
     Parameters:
     - graph: A networkx graph (nx.Graph)
     - attr: The attribute to check for
     - prefix: The prefix for the new attribute
-    
-    Returns:
-    - A dictionary of updates for the graph nodes
+    - levels: The number of levels to check (default is 3)
     """
-    updates = {}
-    new_attr = f"{prefix}_{attr}"
-    for node in graph.nodes:
-        updates[node] = {new_attr: graph.nodes[node].get(attr, False) or any(
-            graph.nodes[neighbor].get(attr, False) for neighbor in graph.neighbors(node)
-        )}
-    return updates
+    for level in range(1, levels + 1):
+        current_neighbor = '_'.join([prefix] * (level - 1))
+        current_attr = f"{current_neighbor}_{attr}" if level > 1 else attr
+        new_attr = f"{'_'.join([prefix] * level)}_{attr}"
+        updates = {}
+        for node in graph.nodes:
+            # Check if the current node or any of its neighbors have the attribute set to True
+            has_attr = graph.nodes[node].get(current_attr, False) or any(
+                graph.nodes[neighbor].get(current_attr, False)
+                for neighbor in graph.neighbors(node)
+            )
+            updates[node] = {new_attr: has_attr}
+        
+        nx.set_node_attributes(graph, updates)
 
 def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     """
     Enriches the graph by adding attributes to each node indicating whether
-    any neighbors or neighbors of neighbors have a certain boolean attribute set to True.
+    the node or its neighbors (up to 3 levels) have a certain boolean attribute set to True.
     
     Parameters:
     - graph: A networkx graph (nx.Graph) with boolean attributes on nodes (one-hot encoded).
@@ -95,38 +98,10 @@ def enrich_node_attributes(graph: nx.Graph) -> nx.Graph:
     for node, attrs in graph.nodes(data=True):
         boolean_attributes.update(attr for attr, value in attrs.items() if isinstance(value, bool))
     
-    # First level: neighbors
+    # Update attributes for all levels
     for attr in boolean_attributes:
-        nx.set_node_attributes(
-            graph,
-            _enrich_node_attributes_level(
-                graph,
-                attr,
-                "neighbor"
-            )
-        )
+        update_neighbors_with_prefix(graph, attr, "neighbor", levels=3)
 
-    # Second level: neighbors of neighbors
-    for attr in boolean_attributes:
-        nx.set_node_attributes(
-            graph,
-            _enrich_node_attributes_level(
-                graph,
-                f"neighbor_{attr}",
-                "neighbor"
-            )
-        )
-    # Third level: neighbors of neighbors
-    print("Now looping through third level: neighbors of neighbors of neighbors")
-    for attr in boolean_attributes:
-        nx.set_node_attributes(
-            graph,
-            _enrich_node_attributes_level(
-                graph,
-                f"neighbor_neighbor_{attr}",
-                "neighbor"
-            )
-        ) 
     return graph
 
 

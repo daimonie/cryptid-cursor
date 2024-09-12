@@ -92,13 +92,19 @@ def add_edges_for_node(G: nx.Graph, node: Any, rows: int, cols: int) -> None:
 
 
     neighbors = [row_col_to_node_id(r, c, node) for r, c in neighbors]
+    
+    assert len(neighbors) <= 6, f"Node {node} has {len(neighbors)} neighbors: {neighbors}"
+    
     for neighbor in neighbors:
         if neighbor in G.nodes:
             G.add_edge(node, neighbor)
-
+    
+    # Print the neighbors of node (9, 6) if it's the current node
+    if (row, col) == (9, 6):
+        print(f"Neighbors of node (9, 6): {list(G.neighbors((9, 6)))}")
 def get_hexagonal_neighbors(row: int, col: int, rows: int, cols: int) -> List[Tuple[int, int]]:
     """
-    Get the list of hexagonal neighbors for a given node in a hexagonal grid where odd rows are indented.
+    Get the list of hexagonal neighbors for a given node in a hexagonal grid.
     
     Parameters:
     - row: Row index of the node (0-based).
@@ -110,26 +116,36 @@ def get_hexagonal_neighbors(row: int, col: int, rows: int, cols: int) -> List[Tu
     - List of neighbor coordinates as tuples (row, col).
     """
     neighbors = []
-    
-    # Define neighbor offsets for hexagonal grid
-    # For even rows: top-left, top-right, left, right, bottom-left, bottom-right
-    # For odd rows: top-left, top-right, left, right, bottom-left, bottom-right (shifted right)
-    offsets = [
-        (-1, -1), (-1, 0),
-        (0, -1), (0, 1),
-        (1, -1), (1, 0)
-    ] if row % 2 == 0 else [
-        (-1, 0), (-1, 1),
-        (0, -1), (0, 1),
-        (1, 0), (1, 1)
-    ]
+
+    if row % 2 == 0 and col % 2 == 0:
+        #  72 has neighbors 61 62 63 71 82 73
+         offsets = [
+            (-1, -1), (-1, 0), (-1, 1),
+            (0, -1), (1, 0), (0, 1)
+        ]
+    elif row % 2 == 1 and col % 2 == 1:
+        # 71 has neighbors 70 61 72 80 81 82
+        offsets = [
+           (0, -1), (-1, 0), (0, 1),
+           (1, -1), (1, 0), (1, 1)
+        ]
+    elif row % 2 == 0 and col % 2 == 1:
+        #  81 has neighbors 80 71 82 90 91 92
+        offsets = [
+           (0, -1),(-1, 0), (0, 1),
+           (1, -1), (1, 0), (1, 1)
+        ]
+    else:  # row % 2 == 1 and col % 2 == 0
+        #  72 has neighbors 61 62 63 71 82 73
+        offsets = [
+            (-1, -1), (-1, 0), (-1, 1),
+            (0, -1), (1, 0), (0, 1)
+        ]
     
     for dr, dc in offsets:
         new_row, new_col = row + dr, col + dc
         if 0 <= new_row < rows and 0 <= new_col < cols:
             neighbors.append((new_row, new_col))
-    # Ensure the current node is not included in the neighbors list
-    neighbors = [neighbor for neighbor in neighbors if neighbor != (row, col)]
     return neighbors
 
 def add_hexagonal_edges(G: nx.Graph, rows: int, cols: int) -> None:
@@ -164,8 +180,8 @@ def generate_hexagonal_grid_graph(rows, cols):
     """
     G = nx.Graph()
     
-    attributes = [f'is_{terrain}' for terrain in get_terrain_types()]
-    
+    attributes = [f'is_{terrain}' for terrain in get_terrain_types()] 
+     
     # Add nodes with random attributes
     for row in range(rows):
         for col in range(cols):
@@ -173,8 +189,14 @@ def generate_hexagonal_grid_graph(rows, cols):
             node_attr = assign_random_attribute(attributes)
             G.add_node(node, **node_attr)
     
-    # Add edges for hexagonal connectivity
+    print(f"Number of nodes: {G.number_of_nodes()}")
+    print(f"Number of edges: {G.number_of_edges()}") 
+    # Add edges
     add_hexagonal_edges(G, rows, cols)
+    
+    # Print number of nodes and edges
+    print(f"Number of nodes: {G.number_of_nodes()}")
+    print(f"Number of edges: {G.number_of_edges()}") 
     
     return G
 

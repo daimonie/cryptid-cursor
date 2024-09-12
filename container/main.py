@@ -1,6 +1,8 @@
 import numpy as np
 
-from cryptid.board import generate_game_map, plot_hexagonal_grid
+from utils.graph_utils import serialize_graph, generate_unique_code
+from cryptid.board import generate_game_map
+from cryptid.plotting import plot_hexagonal_grid, plot_hexagonal_test
 from cryptid.game_rules import verify_map_attributes, generate_hint_combinations, count_tiles_fitting_hints
 
 if __name__ == "__main__":
@@ -43,8 +45,8 @@ if __name__ == "__main__":
 
 
 
-    print("\nGenerating 10 game boards and reporting counts:")
-    for iteration in range(1, 11):
+    print("\nGenerating  game boards and generating a test:")
+    for iteration in range(1, 1001):
         print(f"\nIteration {iteration}:")
         
         # Generate new game map
@@ -58,19 +60,37 @@ if __name__ == "__main__":
         print(f"Tiles fitting all hint combinations: {total_count}")
         print(f"Nodes fitting all hint combinations: {fitting_nodes}")
         
-        if total_count >= 1:
-            plot_hexagonal_grid(
+        if total_count == 1:
+            plot_hexagonal_test(
                 game_map, 11, 8, 
                 cryptid_markers=fitting_nodes, 
                 hints=hint_combinations, 
-                prefix=f"iteration_{iteration}"
+                prefix="test_"
             )
             
             print(f"Hexagonal grid map plotted for iteration {iteration}")
-            import time
-            time.sleep(3)
-        raise Exception("""
-        I still see issues in the generated results with within 2/3. 
-        Next up, make sure it stores the map for each iteration/image 
-        and write a file where we can load a map and eval
-        """)
+            # Print the number of nodes and edges in the game map
+            num_nodes = game_map.number_of_nodes()
+            num_edges = game_map.number_of_edges()
+            print(f"Number of nodes in the game map: {num_nodes}")
+            print(f"Number of edges in the game map: {num_edges}")
+
+            break
+
+    plot_hexagonal_grid(
+        game_map, 11, 8, 
+        cryptid_markers=fitting_nodes, 
+        hints=hint_combinations, 
+        prefix="real_"
+    )
+
+    # Serialize the game map and generate a unique code
+
+    serialized_data = serialize_graph(game_map)
+    unique_code = generate_unique_code(serialized_data)
+
+    # Write the serialized data to a file
+    with open(f'data/{unique_code}.txt', 'w') as f:
+        f.write(serialized_data)
+
+    print(f"Game map serialized and saved with unique code: {unique_code}")
