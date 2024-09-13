@@ -117,3 +117,24 @@ def find_available_placements(G, player_hint):
             available_placements[piece_type].append(node)
     
     return available_placements
+
+def find_available_moves(G, player, hints):
+    moves = []
+    player_hint = hints[player]
+    
+    for node in G.nodes():
+        # Check if the node has no cube of any player and no disc of the current player
+        no_cubes = not any(G.nodes[node].get(f'cube_player{i}', False) for i in range(1, 4))
+        no_own_disc = not G.nodes[node].get(f'disc_{player}', False)
+        
+        if no_cubes and no_own_disc:
+            # Add question moves for other players
+            for other_player in hints.keys():
+                if other_player != player:
+                    moves.append(('question', node, other_player))
+            
+            # Add wild guess move if allowed by the player's hint
+            if hint_applies(G, node, player_hint):
+                moves.append(('wild_guess', node))
+    
+    return moves
