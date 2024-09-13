@@ -28,10 +28,10 @@ def plot_hexagonal_test(G, rows, cols, hex_size=1, cryptid_markers=None, hints=N
         hints=hints,
         prefix=prefix,
         mark_edges=True,
-        mark_abandoned_shack=True
+        mark_standing_stone=True
     )
 
-def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=None, prefix="", mark_edges=False, mark_abandoned_shack=False):
+def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=None, prefix="", mark_edges=False, mark_standing_stone=False):
     fig, ax = plt.subplots(figsize=(cols * 1.5, rows * 1.5))
     ax.set_aspect('equal')
 
@@ -60,7 +60,7 @@ def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=N
             if cryptid_markers and (row, col) in cryptid_markers:
                 add_hydra_marker(ax, x, y, hex_size)
             
-            if mark_abandoned_shack:
+            if mark_standing_stone:
             # Check for near structure and add red square if True
                 if data.get('neighbor_neighbor_neighbor_standing_stone', False):
                     add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='right', color='black')
@@ -103,7 +103,7 @@ def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=N
     ax.axis('off')
     plt.tight_layout()
     
-    plt.savefig(f'{prefix}hexagonal_grid.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'{prefix}.png', dpi=300, bbox_inches='tight')
     plt.close()
 
 def get_terrain_color(node_data):
@@ -123,7 +123,7 @@ def get_terrain_color(node_data):
 
 def add_hydra_marker(ax, hex_x, hex_y, hex_size):
     marker_x = hex_x
-    marker_y = hex_y - 0.5 * hex_size
+    marker_y = hex_y + 0.5 * hex_size
     # Add Hydra body
     body = ax.add_patch(plt.Circle((marker_x, marker_y), radius=hex_size*0.2, 
                                    facecolor='red', edgecolor='black', zorder=3))

@@ -1,6 +1,7 @@
 import networkx as nx
 import hashlib
 import json
+from utils.graph_generate_landscape import node_id_to_row_col, row_col_to_node_id
 
 def serialize_graph(graph: nx.Graph) -> str:
     """
@@ -13,8 +14,8 @@ def serialize_graph(graph: nx.Graph) -> str:
     - A JSON string representing the graph structure.
     """
     graph_data = {
-        "nodes": {node: dict(data) for node, data in graph.nodes(data=True)},
-        "edges": list(graph.edges())
+        "nodes": {row_col_to_node_id(*node, "AB"): dict(data) for node, data in graph.nodes(data=True)},
+        "edges": [(row_col_to_node_id(*u, "AB"), row_col_to_node_id(*v, "AB")) for u, v in graph.edges()]
     }
     return json.dumps(graph_data, sort_keys=True)
 
@@ -53,8 +54,8 @@ def parse_code_to_graph(graph_hash: str, serialized_data_store: dict) -> nx.Grap
     graph_data = json.loads(serialized_data)
 
     graph = nx.Graph()
-    graph.add_nodes_from((node, attrs) for node, attrs in graph_data["nodes"].items())
-    graph.add_edges_from(graph_data["edges"])
+    graph.add_nodes_from((node_id_to_row_col(node), attrs) for node, attrs in graph_data["nodes"].items())
+    graph.add_edges_from((node_id_to_row_col(u), node_id_to_row_col(v)) for u, v in graph_data["edges"])
 
     return graph
 def update_neighbors_with_prefix(graph: nx.Graph, attr: str, prefix: str, levels: int = 3) -> None:

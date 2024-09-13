@@ -1,41 +1,48 @@
+# Use Python 3.12.3 as the base image
 FROM python:3.12.3
 
-# update the debian packages
+# Update the debian packages
 RUN apt-get update
+
+# Install pre-commit
 RUN apt install pre-commit -y
 
-# install poetry
+# Install poetry
 RUN pip install poetry
+
+# Verify poetry installation
 RUN poetry --version
 
-
-# copy container directory into docker image, move to it
+# Copy container directory into docker image
 COPY container/ /opt/container
+
+# Set working directory
 WORKDIR /opt/container
 
 # Create a group and user for restricted access
 RUN groupadd -r python-role && useradd -r -g python-role pythonuser
 
-# Create a dev user with sudo privileges
-RUN useradd -m -s /bin/bash devuser && \
-    usermod -aG sudo devuser && \
-    echo "devuser ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+# Switch to root user for setting permissions
+USER root
+RUN echo "root:cthulu" | chpasswd
 
-# Additional read/write for container & home
-RUN chmod a+rw /opt/container/
+# Ensure pythonuser can run python files
+RUN chmod +x /opt/container/*.py
+
+# Grant read/write access to home directory for poetry
 RUN chmod a+rw /home
 
-# Set password for devuser (change 'password' to your desired password)
-RUN echo 'devuser:cthulu' | chpasswd
+# Set permissions for /opt/container and /opt/container/output
+RUN chown -R root:python-role /opt/container && \
+    chmod -R 755 /opt/container && \ 
+    mkdir -p /opt/container/output && \
+    chown -R pythonuser:python-role /opt/container/output && \
+    chmod -R 775 /opt/container/output
 
-# Switch to pythonuser for default operation
-USER devuser
-
-# install poetry from pypoetry.toml
+# Install poetry dependencies for root
 RUN poetry install
-
 # Switch to pythonuser for default operation
 USER pythonuser
 
-# install poetry from pypoetry.toml
+# Install poetry dependencies for pythonuser
 RUN poetry install
