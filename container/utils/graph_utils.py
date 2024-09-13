@@ -21,7 +21,7 @@ def serialize_graph(graph: nx.Graph, hints: Dict[str, List[str]] = None) -> str:
     
     if hints:
         hints_json = {
-            f"player{i}": hints[i].tolist() for i in range(3)
+            f"player{i+1}": hints[i].tolist() for i in range(3)
         }
         
         graph_data["hints"] = hints_json
@@ -56,22 +56,28 @@ def parse_code_to_graph(graph_hash: str) -> nx.Graph:
     - KeyError if the hash is not found in the JSON file.
     """
     try:
-        with open('/opt/container/output/graph_hash.json', 'r') as f:
-            serialized_data_store = json.load(f)
+        with open(f'/opt/container/output/{graph_hash}', 'r') as f:
+            graph_data = json.load(f)
     except FileNotFoundError:
-        raise FileNotFoundError("graph_hash.json file not found in /opt/container/output/")
-
-    if graph_hash not in serialized_data_store:
-        raise KeyError("Graph data for the given hash not found.")
-    
-    serialized_data = serialized_data_store[graph_hash]
-    graph_data = json.loads(serialized_data)
+        raise FileNotFoundError("'/opt/container/output/{graph_hash} file not found in /opt/container/output/")
+ 
 
     graph = nx.Graph()
     graph.add_nodes_from((node_id_to_row_col(node), attrs) for node, attrs in graph_data["nodes"].items())
     graph.add_edges_from((node_id_to_row_col(u), node_id_to_row_col(v)) for u, v in graph_data["edges"])
+    # Check and correct player keys in hints
+    if "hints" in graph_data and "player0" in graph_data["hints"]:
+        corrected_hints = {}
+        for key, value in graph_data["hints"].items():
+            if key.startswith("player"):
+                player_num = int(key[6:])  # Extract the number after "player"
+                corrected_key = f"player{player_num + 1}"  # Increment by 1
+                corrected_hints[corrected_key] = value
+            else:
+                corrected_hints[key] = value
+        graph_data["hints"] = corrected_hints
 
-    return graph
+    return graph, graph_data["hints"]
 def update_neighbors_with_prefix(graph: nx.Graph, attr: str, prefix: str, levels: int = 3) -> None:
     """
     Update nodes with prefixed attributes based on the presence of the attribute in neighboring nodes.
@@ -150,24 +156,3 @@ def create_graph():
     ])
     graph.add_edges_from([('a', 'b'), ('b', 'c')])
     return graph
-
-if __name__ == "__main__":
-    # Example usage or test code
-    test_graph = create_graph()
-
-    print("Original graph:", test_graph.nodes(data=True))
-    
-    enriched_graph = enrich_node_attributes(test_graph)
-    print("Enriched graph:", enriched_graph.nodes(data=True))
-    
-    filtered_nodes = filter_nodes_by_attributes(enriched_graph, "attr1", True)
-    print("Nodes with attr1=True:", filtered_nodes)
-
-    serialized = serialize_graph(enriched_graph)
-    print("Serialized graph:", serialized)
-
-    unique_code = generate_unique_code(serialized)
-    print("Unique code:", unique_code)
-
-    reconstructed_graph = parse_code_to_graph(unique_code, {unique_code: serialized})
-    print("Reconstructed graph:", reconstructed_graph.nodes(data=True))

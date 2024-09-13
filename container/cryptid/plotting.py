@@ -31,6 +31,13 @@ def plot_hexagonal_test(G, rows, cols, hex_size=1, cryptid_markers=None, hints=N
         mark_standing_stone=True
     )
 
+def get_player_colors():
+    return {
+        'player1': 'red',
+        'player2': '#00FF00',
+        'player3': 'black'
+    }
+
 def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=None, prefix="", mark_edges=False, mark_standing_stone=False):
     fig, ax = plt.subplots(figsize=(cols * 1.5, rows * 1.5))
     ax.set_aspect('equal')
@@ -61,13 +68,24 @@ def plot_hexagonal_grid(G, rows, cols, hex_size=1, cryptid_markers=None, hints=N
                 add_hydra_marker(ax, x, y, hex_size)
             
             if mark_standing_stone:
-            # Check for near structure and add red square if True
+                player_colors = get_player_colors()
+
+                # Check for near structure and add markers
                 if data.get('neighbor_neighbor_neighbor_standing_stone', False):
-                    add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='right', color='black')
+                    add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='right', color=player_colors['player3'])
                 if data.get('neighbor_neighbor_standing_stone', False):
-                    add_bottom_marker(ax, x, y, hex_size, shape='circle', alignment='center', color='#00FF00')
+                    add_bottom_marker(ax, x, y, hex_size, shape='circle', alignment='center', color=player_colors['player2'])
                 if data.get('neighbor_standing_stone', False):
-                    add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='left', color='red')
+                    add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='left', color=player_colors['player1'])
+            # Add markers for player pieces
+            player_colors = get_player_colors()
+            for player, color in player_colors.items():
+                if data.get(f'disc_{player}', False):
+                    add_bottom_marker(ax, x, y, hex_size, shape='circle', alignment='center', color=color)
+                elif data.get(f'cube_{player}', False):
+                    add_bottom_marker(ax, x, y, hex_size, shape='square', alignment='center', color=color)
+
+
 
     if mark_edges:
         for node in G.nodes():

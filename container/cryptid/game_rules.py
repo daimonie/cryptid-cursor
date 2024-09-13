@@ -84,3 +84,36 @@ def count_tiles_fitting_hints(G, hints):
             count += 1
             fitting_nodes.append(node)
     return count, fitting_nodes
+
+def initialize_player_pieces(G):
+    for node in G.nodes():
+        for player in range(1, 4):
+            G.nodes[node][f'disc_player{player}'] = False
+            G.nodes[node][f'cube_player{player}'] = False
+            
+def place_player_piece(G, node, player, is_disc):
+    piece_type = 'disc' if is_disc else 'cube'
+    if player not in ["player1", "player2", "player3"]:
+        raise ValueError("player must be 1, 2, or 3")
+    
+    G.nodes[node][f'{piece_type}_{player}'] = True
+
+def find_available_placements(G, player_hint):
+    available_placements = {'cube': [], 'disc': []}
+    for node in G.nodes():
+        node_fits_hint = hint_applies(G, node, player_hint)
+        piece_type = 'disc' if node_fits_hint else 'cube'
+        
+        # Check if there are no pieces of the current player
+        no_own_pieces = not any(G.nodes[node].get(f'{pt}_player{i}', False) 
+                                for pt in ['cube', 'disc'] 
+                                for i in range(1, 4))
+        
+        # For cubes, also check if there are no other players' cubes
+        no_other_cubes = not any(G.nodes[node].get(f'cube_player{i}', False) 
+                                 for i in range(1, 4))
+        
+        if no_own_pieces and (piece_type == 'disc' or no_other_cubes):
+            available_placements[piece_type].append(node)
+    
+    return available_placements
