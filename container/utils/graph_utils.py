@@ -2,21 +2,30 @@ import networkx as nx
 import hashlib
 import json
 from utils.graph_generate_landscape import node_id_to_row_col, row_col_to_node_id
-
-def serialize_graph(graph: nx.Graph) -> str:
+from typing import List, Dict
+def serialize_graph(graph: nx.Graph, hints: Dict[str, List[str]] = None) -> str:
     """
     Serialize the graph to a JSON string.
     
     Parameters:
     - graph: A networkx graph (nx.Graph) whose nodes have attributes and edges.
+    - hints: Optional list of hint tuples to be serialized.
     
     Returns:
-    - A JSON string representing the graph structure.
+    - A JSON string representing the graph structure and hints.
     """
     graph_data = {
         "nodes": {row_col_to_node_id(*node, "AB"): dict(data) for node, data in graph.nodes(data=True)},
         "edges": [(row_col_to_node_id(*u, "AB"), row_col_to_node_id(*v, "AB")) for u, v in graph.edges()]
     }
+    
+    if hints:
+        hints_json = {
+            f"player{i}": hints[i].tolist() for i in range(3)
+        }
+        
+        graph_data["hints"] = hints_json
+    
     return json.dumps(graph_data, sort_keys=True)
 
 
@@ -32,21 +41,26 @@ def generate_unique_code(serialized_graph: str) -> str:
     """
     return hashlib.sha256(serialized_graph.encode()).hexdigest()
 
-
-def parse_code_to_graph(graph_hash: str, serialized_data_store: dict) -> nx.Graph:
+def parse_code_to_graph(graph_hash: str) -> nx.Graph:
     """
-    Reconstruct a graph from a hash using the serialized data stored with the hash.
+    Reconstruct a graph from a hash using the serialized data stored in a JSON file.
     
     Parameters:
     - graph_hash: The hash of the graph, used to lookup the serialized data.
-    - serialized_data_store: A dictionary storing serialized graph data keyed by hash.
     
     Returns:
     - A networkx graph reconstructed from the stored serialized data.
     
     Raises:
-    - KeyError if the hash is not found in the serialized_data_store.
+    - FileNotFoundError if the JSON file is not found.
+    - KeyError if the hash is not found in the JSON file.
     """
+    try:
+        with open('/opt/container/output/graph_hash.json', 'r') as f:
+            serialized_data_store = json.load(f)
+    except FileNotFoundError:
+        raise FileNotFoundError("graph_hash.json file not found in /opt/container/output/")
+
     if graph_hash not in serialized_data_store:
         raise KeyError("Graph data for the given hash not found.")
     

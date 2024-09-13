@@ -61,8 +61,13 @@ if __name__ == "__main__":
         print(f"Nodes fitting all hint combinations: {fitting_nodes}")
         
         if total_count == 1:
-            serialized_data = serialize_graph(game_map)
+                    
+            # Serialize the game map and generate a unique code
+
+            serialized_data = serialize_graph(game_map, hints=hint_combinations)
             unique_code = generate_unique_code(serialized_data)
+
+
             plot_hexagonal_test(
                 game_map, 11, 8, 
                 cryptid_markers=fitting_nodes, 
@@ -78,7 +83,7 @@ if __name__ == "__main__":
             print(f"Number of edges in the game map: {num_edges}")
 
             break
-
+    
     plot_hexagonal_grid(
         game_map, 11, 8, 
         cryptid_markers=fitting_nodes, 
@@ -86,13 +91,8 @@ if __name__ == "__main__":
         prefix=f"output/real_{unique_code}"
     )
 
-    # Serialize the game map and generate a unique code
-
-    serialized_data = serialize_graph(game_map)
-    unique_code = generate_unique_code(serialized_data)
-
     # Write the serialized data to a file
-    with open(f'output/{unique_code}.txt', 'w') as f:
+    with open(f'output/{unique_code}.json', 'w') as f:
         f.write(serialized_data)
 
     print(f"Game map serialized and saved with unique code: {unique_code}")
