@@ -10,7 +10,8 @@ from cryptid.game_rules import (
     find_available_placements,
     place_player_piece,
     find_available_moves,
-    hint_applies
+    hint_applies,
+    find_predicted_states
 )
 
 from cryptid.plotting import plot_hexagonal_grid, plot_hexagonal_test, get_player_colors
@@ -61,9 +62,11 @@ if __name__ == "__main__":
     Total: {len(my_placements['cube']) + len(my_placements['disc'])} options""")
             
             my_moves = find_available_moves(game_map, player, hints_players)
-            selected_move = random.choice(my_moves)
-            print(f"Selected move: {selected_move}")
+            my_moves_with_predicted_states = find_predicted_states(game_map, my_moves, player, my_placements)
 
+            selected_move = random.choice(my_moves_with_predicted_states)
+            print(f"Selected move: {selected_move[:-1]}")
+            print(selected_move[-1])
             other_player_placed_cube = False
             game_won = False
             if selected_move[0] == 'question':
@@ -121,3 +124,21 @@ if __name__ == "__main__":
             if game_won:
                 print(f"{player} won the game!")
                 break
+            raise Exception("""
+            
+For next time:
+    Write a function that predicts state s'  from (s, a) using the serialize/unique code logic
+    Read Q matrix from file or initialize empty one
+    Select Move takes a random move from the top 3 options
+        we don't know which so first add states s' to the moves, then their Q
+        sort the list, make the choice
+    Select cube is similar; predict s' for each cube placement option, then choose
+        one of the top ones.
+    
+    After each move, store (s, a, s') in the replay buffer
+    update after game ends, use Monte Carlo Q Learning logic from chatgpt
+    store the Q matrix in output/qmatrix.json
+                            
+                            
+                            
+                            """)

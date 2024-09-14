@@ -4,6 +4,8 @@ from typing import Dict, List
 
 from cryptid.board import  generate_all_structures, get_all_animals
 from utils.graph_generate_landscape import get_terrain_types
+from utils.graph_utils import serialize_graph, generate_unique_code
+
 
 def generate_all_hints() -> Dict[str, List[str]]:
     """
@@ -138,3 +140,48 @@ def find_available_moves(G, player, hints):
                 moves.append(('wild_guess', node))
     
     return moves
+def generate_states(move, player, my_placements):
+    states = []
+    if move[0] == 'question':
+        node, questioned_player = move[1], move[2]
+        for is_disc in [True, False]:
+            state = [(questioned_player, node, is_disc)]
+            if not is_disc:
+                for cube_node in my_placements['cube']:
+                    states.append(state + [(player, cube_node, False)])
+            else:
+                states.append(state)
+    else:  # wild_guess
+        node = move[1]
+        base_state = [(player, node, True)]
+        player_order = ['player1', 'player2', 'player3']
+        start_index = player_order.index(player)
+        for i in range(1, 3):
+            next_player = player_order[(start_index + i) % 3]
+            for is_disc in [True, False]:
+                new_state = base_state + [(next_player, node, is_disc)]
+                if not is_disc:
+                    for cube_node in my_placements['cube']:
+                        states.append(new_state + [(player, cube_node, False)])
+                    break
+                elif i == 2:
+                    states.append(new_state)
+    return states
+
+def find_predicted_states(game_map, my_moves, player, my_placements):
+    moves_with_states = []
+    for move in my_moves:
+        possible_states = generate_states(move, player, my_placements)
+        final_states = []
+        for state in possible_states:
+            game_map_copy = game_map.copy()
+            for player, node, is_disc in state:
+                place_player_piece(game_map_copy, node, player, is_disc)
+            serialized = serialize_graph(game_map_copy)
+            unique_code = generate_unique_code(serialized)
+            final_states.append(unique_code)
+        moves_with_states.append(move + (final_states,))
+
+    return moves_with_states
+
+
