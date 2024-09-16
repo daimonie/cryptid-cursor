@@ -580,46 +580,11 @@ def policy_cube(generator, top_cube_moves):
     index = generator.choice(range(len(top_cube_moves)))
     return top_cube_moves[index]
 
-def update_q_matrix(q_matrix, moves, final_state, hints, **kwargs):
-    learning_rate = kwargs.get('learning_rate', 0.1)
-    discount_factor = kwargs.get('discount_factor', 0.9)
-    move_penalty = kwargs.get('move_penalty', -1)
-    lose_penalty = kwargs.get('lose_penalty', -10)
-    win_reward = kwargs.get('win_reward', 100)
-    cube_penalty = kwargs.get('cube_penalty', -2)  # Additional penalty for placing a cube
-    
-    last_move = moves[-1]
-    last_move_type = last_move[0]
-    final_reward = win_reward if last_move_type == 'wild_guess' else lose_penalty
-
-    for i in range(len(moves) - 1, -1, -1):
-        move, state, hint = moves[i]
-        next_state = moves[i+1][1] if i < len(moves) - 1 else final_state
-
-        current_q = q_matrix.get((state, hint, tuple(move[:2])), 0)
-
-        if move[0] == 'cube':
-            reward = cube_penalty
-        elif i == len(moves) - 1:
-            reward = final_reward
-        else:
-            reward = move_penalty
-
-        if move[0] == 'cube':
-            next_q_max = max([q_matrix.get((None, hint, tuple(m[:2])), 0) for m in find_available_cube_moves(next_state, hint)])
-        else:
-            next_q_max = max([q_matrix.get((next_state, hint, tuple(m[:2])), 0) for m in find_available_moves(next_state, hint)])
-
-        new_q = current_q + learning_rate * (reward + discount_factor * next_q_max - current_q)
-
-        q_matrix[(state, hint, tuple(move[:2]))] = new_q
-
-    return q_matrix
 def policy(generator, top_moves):
     indices = generator.choice(range(len(top_moves)), size=1)[0]
     return top_moves[indices]
 
-def update_q_matrix(q_matrix, moves, final_state, hints, piece_counts, game_won, **kwargs):
+def update_q_matrix(q_matrix, moves, final_state, player_won, **kwargs):
     learning_rate = kwargs.get('learning_rate', 0.1)
     discount_factor = kwargs.get('discount_factor', 0.9)
     move_penalty = kwargs.get('move_penalty', -1)
@@ -629,13 +594,13 @@ def update_q_matrix(q_matrix, moves, final_state, hints, piece_counts, game_won,
     # Determine the final reward based on the game outcome
     last_move = moves[-1]
     last_move_type = last_move[0]
-    final_reward = win_reward if game_won and last_move_type == 'wild_guess' else lose_penalty
-
-    # Take off points for the maount of moves it took to win
-    final_reward -= len(moves) * move_penalty
-
-    if game_won:
-        print(f"This player won and gets {win_reward} extra win reward points!")
+    final_reward = lose_penalty
+    if player_won:
+        final_reward = win_reward
+        print(f"This player won and gets {final_reward} extra win reward points!")
+    else:
+        print(f"This player lost and gets {final_reward} as a penalty.")
+ 
 
     # Iterate through moves in reverse order
     for i in range(len(moves) - 1, -1, -1):
@@ -649,10 +614,19 @@ def update_q_matrix(q_matrix, moves, final_state, hints, piece_counts, game_won,
         current_q = q_matrix.get((state, hint_tuple, tuple(move[:2])), 0)
 
         # Calculate the reward for this move 
-        # This weighing gives more importance to later moves, which may not be ideal
-        # Consider using a constant reward or a different weighing scheme
-        reward = move_penalty  # Use a constant penalty for each move
-        reward = final_reward * (discount_factor ** (len(moves) - 1 - i))
+        T = len(moves)
+        t = T - i - 1  # Current step (reversed)
+        R = final_reward
+        gamma = discount_factor
+        
+        if i == len(moves) - 1:
+            reward = R
+        else:
+            # This formula calculates the discounted future reward.
+            # - (1 - gamma**(T-t)) / (1-gamma) is the sum of discounted penalties for each step
+            # (gamma**(T-t)) * R is the discounted final reward
+            # Together, they provide a balanced reward that considers both immediate penalties and the final outcome
+            reward = move_penalty* (1 - gamma**(T-t)) / (1-gamma) + (gamma**(T-t)) * R
         # Get the maximum Q-value for the next state
         next_q_max = q_matrix.get((next_state, hint_tuple, tuple(move[:2])), 0)
 
@@ -662,4 +636,4 @@ def update_q_matrix(q_matrix, moves, final_state, hints, piece_counts, game_won,
         # Store the updated Q-value
         q_matrix[(state, hint_tuple, tuple(move[:2]))] = new_q
 
-    return q_matrix, final_reward
+    return q_matrix, final_reward + move_penalty * len(moves)

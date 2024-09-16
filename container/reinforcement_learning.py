@@ -155,6 +155,8 @@ if __name__ == "__main__":
     if not game_won:
         print("Game ended without a winner.")
 
+    final_player = str(player)
+
     # Update Q-matrix after the game ends
     final_state = serialize_graph(game_map)
     for player in player_colors.keys():
@@ -164,13 +166,12 @@ if __name__ == "__main__":
                 'cube': sum(1 for node in game_map.nodes() if game_map.nodes[node].get(f'cube_{p}', False))}
             for p in player_colors.keys() if p != player
         }
-        player_won = game_won and player == last_player
+        player_won = game_won and player == final_player
+        print(f"Final player: {final_player} ({'winner' if player_won else 'loser'})")
         q_matrix, final_reward = update_q_matrix(
             q_matrix,
             player_moves,
             final_state,
-            hints_players,
-            piece_counts,
             player_won
         )
         print(f"Final reward for {player}: {final_reward}")
