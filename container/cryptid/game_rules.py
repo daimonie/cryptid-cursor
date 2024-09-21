@@ -495,6 +495,13 @@ def generate_states(move, player, my_placements):
     return states
 import multiprocessing as mp
 
+def process_move_mapcode(G, current_player):
+
+    serialized = serialize_graph(G)
+    unique_code = generate_unique_code(serialized)
+
+    return unique_code
+
 def process_move(args):
     game_map, move, player, my_placements = args
     
@@ -504,11 +511,44 @@ def process_move(args):
         game_map_copy = game_map.copy()
         for player, node, is_disc in state:
             place_player_piece(game_map_copy, node, player, is_disc)
-        serialized = serialize_graph(game_map_copy)
-        unique_code = generate_unique_code(serialized)
-        final_states.append(unique_code)
+        # too much lock in with this logic. We need to play vs the others
+        # state_code = process_move_mapcode(game_map_copy, player)
+        state_code = process_move_hintcode(game_map_copy, player)
+        final_states.append(state_code)
         
     return move + (final_states,)
+
+def hint_applies_everywhere(game_map, player, hint):
+    for node in game_map.nodes():
+        if hint_applies(game_map, node, hint):
+            if game_map.nodes[node].get(f'cube_{player}', False):
+                return False
+    return True
+
+def count_possible_hints(game_map, player):
+    all_hints = generate_all_hints(game_map)
+    possible_hints_count = 0
+    for hint in all_hints:
+        if hint_applies_everywhere(game_map, player, hint):
+            possible_hints_count += 1
+    return possible_hints_count
+
+def count_possible_hints_for_all_players(game_map, current_player):
+    player_order = ['player1', 'player2', 'player3']
+    hint_counts = []
+    
+    for player in player_order:
+        possible_hints = count_possible_hints(game_map, player)
+        if player == current_player:
+            possible_hints = 1
+        hint_counts.append(possible_hints)
+    
+    return tuple(hint_counts)
+
+def process_move_hintcode(G, player):
+    hints_counts = count_possible_hints_for_all_players(G, player)
+    return "-".join(hints_counts)
+
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
     print(f"Starting multiprocessing pool for {len(my_moves)} moves")
