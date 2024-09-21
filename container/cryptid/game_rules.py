@@ -526,7 +526,7 @@ def hint_applies_everywhere(game_map, player, hint):
     return True
 
 def count_possible_hints(game_map, player):
-    all_hints = generate_all_hints(game_map)
+    all_hints = generate_all_hints()
     possible_hints_count = 0
     for hint in all_hints:
         if hint_applies_everywhere(game_map, player, hint):
@@ -547,7 +547,7 @@ def count_possible_hints_for_all_players(game_map, current_player):
 
 def process_move_hintcode(G, player):
     hints_counts = count_possible_hints_for_all_players(G, player)
-    return "-".join(hints_counts)
+    return "-".join([f"{hint}" for hint in hints_counts])
 
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
