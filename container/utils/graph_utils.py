@@ -3,6 +3,7 @@ import hashlib
 import json
 from utils.graph_generate_landscape import node_id_to_row_col, row_col_to_node_id
 from typing import List, Dict
+
 def serialize_graph(graph: nx.Graph, hints: Dict[str, List[str]] = None) -> str:
     """
     Serialize the graph to a JSON string.

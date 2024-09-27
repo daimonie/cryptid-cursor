@@ -33,7 +33,7 @@ if __name__ == "__main__":
     selected_file = random.choice(json_files) 
     # Unserialize the game board
     game_map, hints_players = parse_code_to_graph(selected_file)
-    hints = [_ for _ in hints_players.values()]
+    hints = [hint for hint in hints_players.values()]
     total_count, fitting_nodes = count_tiles_fitting_hints(game_map, hints)
     
     assert total_count == 1, f"Total count is {total_count} for {selected_file}, hints {hints}"
@@ -55,12 +55,16 @@ if __name__ == "__main__":
             placements = find_available_placements(game_map, hints_players[player])
             if placements['cube']:
                 print(f"Finding available cube moves for {player}...")
+
                 cube_moves = find_available_cube_moves(game_map, player, hints_players)
                 print(f"Selecting top cube moves for {player}...")
+
                 top_cube_moves = select_top_cube_moves(generator, q_matrix, cube_moves, hints_players[player])
                 print(f"Choosing cube location for {player}...")
+
                 cube_location = policy_cube(generator, top_cube_moves)[1]
                 print(f"Placing cube for {player}...")
+
                 place_player_piece(game_map, cube_location, player, False)
                 print(f"{player} placed initial cube at {cube_location}")
             else:

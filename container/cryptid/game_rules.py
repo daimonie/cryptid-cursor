@@ -1,174 +1,14 @@
 import itertools
 import random
 from typing import Dict, List
+import multiprocessing as mp
+import pickle
+import os
 
-from cryptid.board import  generate_all_structures, get_all_animals
+from cryptid.board import generate_all_structures, get_all_animals
 from utils.graph_generate_landscape import get_terrain_types
 from utils.graph_utils import serialize_graph, generate_unique_code
-
-
-def generate_all_hints() -> Dict[str, List[str]]:
-    """
-    Returns a dictionary of game element categories and their corresponding elements.
-    
-    Returns:
-    Dict[str, List[str]]: A dictionary where keys are category descriptions and values are lists of elements.
-    """
-    structures, colors = generate_all_structures()
-    categories = {
-        "terrain_type": [
-            # Generate unique pairs of terrain types using itertools.combinations
-            # This ensures:
-            # 1. Each combination is unique
-            # 2. Order doesn't matter (e.g., "is_forest_desert" and "is_desert_forest" are the same)
-            # 3. A terrain type is not paired with itself
-           
-            (f"is_{t1}", f"is_{t2}")
-            for t1, t2 in itertools.combinations(get_terrain_types(), 2)
-        ],
-        "within_one": [
-            *[(f"is_{terrain}", f"neighbor_is_{terrain}") for terrain in get_terrain_types()],
-            *[(f"is_{animal.lower()}", f"neighbor_is_{animal.lower()}") for animal in get_all_animals()]
-        ],
-        "within_two": [
-            *[(f"is_{animal}", f"neighbor_is_{animal}", f"neighbor_neighbor_is_{animal}") for animal in get_all_animals()],
-            *[(f"{structure}", f"neighbor_{structure}", f"neighbor_neighbor_{structure}") for structure in structures]
-        ],
-        "within_three": [
-            *[(f"{color}", f"neighbor_{color}", f"neighbor_neighbor_{color}", f"neighbor_neighbor_neighbor_{color}")  for color in colors]
-        ]
-    } 
-
-    for key in categories:
-        categories[key] = [(item,) if isinstance(item, str) else item for item in categories[key]]
-    
-    return categories 
-# write a function to see if a hint applies
-# then one that loops through all hints to see how many apply
-
-def verify_map_attributes(G):
-    map_attributes = set()
-    for node, data in G.nodes(data=True):
-        map_attributes.update(data.keys())
-    
-    hint_attributes = set()
-    for category in generate_all_hints().values():
-        for hint in category:
-            hint_attributes.update(attr for attr in hint if not attr.startswith('neighbor_'))
-    
-    missing_in_map = hint_attributes - map_attributes
-    missing_in_hints = map_attributes - hint_attributes
-    
-    return list(missing_in_map), list(missing_in_hints)
-
-def generate_hint_combinations(generator):
-    all_hints = generate_all_hints()
-    hint_combinations = []
-    for _ in range(3):
-        combination = []
-        category = generator.choice(list(all_hints.keys()))
-        hint = generator.choice(all_hints[category])
-        
-        hint_combinations.append(hint)
-    
-    return hint_combinations
-
-def hint_applies(G, node, hint):
-    for attribute in hint:
-        if G.nodes[node].get(attribute, False):
-            return True
-    return False
-def count_tiles_fitting_hints(G, hints):
-    count = 0
-    fitting_nodes = []
-    for node in G.nodes():
-        if all(hint_applies(G, node, hint) for hint in hints):
-            count += 1
-            fitting_nodes.append(node)
-    return count, fitting_nodes
-
-def initialize_player_pieces(G):
-    for node in G.nodes():
-        for player in range(1, 4):
-            G.nodes[node][f'disc_player{player}'] = False
-            G.nodes[node][f'cube_player{player}'] = False
-            
-def place_player_piece(G, node, player, is_disc):
-    piece_type = 'disc' if is_disc else 'cube'
-    if player not in ["player1", "player2", "player3"]:
-        raise ValueError("player must be 1, 2, or 3")
-    
-    G.nodes[node][f'{piece_type}_{player}'] = True
-
-def find_available_placements(G, player_hint):
-    available_placements = {'cube': [], 'disc': []}
-    for node in G.nodes():
-        node_fits_hint = hint_applies(G, node, player_hint)
-        piece_type = 'disc' if node_fits_hint else 'cube'
-        
-        # Check if there are no pieces of the current player
-        no_own_pieces = not any(G.nodes[node].get(f'{pt}_player{i}', False) 
-                                for pt in ['cube', 'disc'] 
-                                for i in range(1, 4))
-        
-        # For cubes, also check if there are no other players' cubes
-        no_other_cubes = not any(G.nodes[node].get(f'cube_player{i}', False) 
-                                 for i in range(1, 4))
-        
-        if no_own_pieces and (piece_type == 'disc' or no_other_cubes):
-            available_placements[piece_type].append(node)
-    
-    return available_placements
-
-def find_available_moves(G, player, hints):
-    moves = []
-    player_hint = hints[player]
-    
-    for node in G.nodes():
-        # Check if the node has no cube of any player and no disc of the current player
-        no_cubes = not any(G.nodes[node].get(f'cube_player{i}', False) for i in range(1, 4))
-        no_own_disc = not G.nodes[node].get(f'disc_{player}', False)
-        
-        if no_cubes and no_own_disc:
-            # Add question moves for other players
-            for other_player in hints.keys():
-                if other_player != player:
-                    moves.append(('question', node, other_player))
-            
-            # Add wild guess move if allowed by the player's hint
-            if hint_applies(G, node, player_hint):
-                moves.append(('wild_guess', node))
-    
-    return moves
-def generate_states(move, player, my_placements):
-    states = []
-    if move[0] == 'question':
-        node, questioned_player = move[1], move[2]
-        for is_disc in [True, False]:
-            state = [(questioned_player, node, is_disc)]
-            if not is_disc:
-                for cube_node in my_placements['cube']:
-                    states.append(state + [(player, cube_node, False)])
-            else:
-                states.append(state)
-    else:  # wild_guess
-        node = move[1]
-        base_state = [(player, node, True)]
-        player_order = ['player1', 'player2', 'player3']
-        start_index = player_order.index(player)
-        for i in range(1, 3):
-            next_player = player_order[(start_index + i) % 3]
-            for is_disc in [True, False]:
-                new_state = base_state + [(next_player, node, is_disc)]
-                if not is_disc:
-                    for cube_node in my_placements['cube']:
-                        states.append(new_state + [(player, cube_node, False)])
-                    break
-                elif i == 2:
-                    states.append(new_state)
-    return states
-import multiprocessing as mp
-
+ 
 def process_move(args):
     game_map, move, player, my_placements = args
     
@@ -404,6 +244,7 @@ def hint_applies(G, node, hint):
         if G.nodes[node].get(attribute, False):
             return True
     return False
+
 def count_tiles_fitting_hints(G, hints):
     count = 0
     fitting_nodes = []
@@ -492,8 +333,7 @@ def generate_states(move, player, my_placements):
                     break
                 elif i == 2:
                     states.append(new_state)
-    return states
-import multiprocessing as mp
+    return states 
 
 def process_move_mapcode(G, current_player):
 
@@ -509,45 +349,72 @@ def process_move(args):
     final_states = []
     for state in possible_states:
         game_map_copy = game_map.copy()
-        for player, node, is_disc in state:
-            place_player_piece(game_map_copy, node, player, is_disc)
+        for other_player, node, is_disc in state:
+            place_player_piece(game_map_copy, node, other_player, is_disc)
         # too much lock in with this logic. We need to play vs the others
         # state_code = process_move_mapcode(game_map_copy, player)
         state_code = process_move_hintcode(game_map_copy, player)
         final_states.append(state_code)
-        
+    # Ensure final_states contains only unique state codes
+    final_states = list(set(final_states))
     return move + (final_states,)
-
 def hint_applies_everywhere(game_map, player, hint):
-    for node in game_map.nodes():
-        if hint_applies(game_map, node, hint):
-            if game_map.nodes[node].get(f'cube_{player}', False):
-                return False
-    return True
+    """
+    Check if a hint applies everywhere on the game map for a given player.
 
-def count_possible_hints(game_map, player):
+    Args:
+    game_map: The game map represented as a networkx graph.
+    player: The player for whom we're checking the hint.
+    hint: A list of flags representing the hint.
+
+    Returns:
+    bool: True if at least one part of the hint applies everywhere, False otherwise.
+    """
+    hint_parts_valid = []
+    for flag in hint:
+        flag_valid = True
+        for node in game_map.nodes():
+            # Check if the flag is present on the node
+            flag_present = game_map.nodes[node].get(flag, False)
+            # Check if the player has a cube on this node
+            player_cube = game_map.nodes[node].get(f'cube_{player}', False)
+
+            # If the flag is present and the player has a cube here,
+            # this part of the hint doesn't apply everywhere
+            if flag_present and player_cube:
+                flag_valid = False
+                break
+        
+        hint_parts_valid.append(flag_valid)
+    
+    # The hint applies everywhere if at least one part of it is valid everywhere
+    return any(hint_parts_valid)
+
+def count_possible_hints_for_player(game_map, player):
     all_hints = generate_all_hints()
     possible_hints_count = 0
-    for hint in all_hints:
-        if hint_applies_everywhere(game_map, player, hint):
-            possible_hints_count += 1
+    for category in all_hints.values():
+        for hint in category:
+            if hint_applies_everywhere(game_map, player, hint):
+                possible_hints_count += 1
     return possible_hints_count
 
-def count_possible_hints_for_all_players(game_map, current_player):
+def count_possible_hints_for_all_players(game_map):
     player_order = ['player1', 'player2', 'player3']
     hint_counts = []
     
     for player in player_order:
-        possible_hints = count_possible_hints(game_map, player)
-        if player == current_player:
-            possible_hints = 1
+        possible_hints = count_possible_hints_for_player(game_map, player) 
         hint_counts.append(possible_hints)
-    
+        
     return tuple(hint_counts)
 
 def process_move_hintcode(G, player):
-    hints_counts = count_possible_hints_for_all_players(G, player)
-    return "-".join([f"{hint}" for hint in hints_counts])
+    hints_counts = count_possible_hints_for_all_players(G)
+
+    # by putting the player in front, we can take into account how much
+    # the other players know about the current player
+    return player+"-"+"-".join([f"{hint}" for hint in hints_counts])
 
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
