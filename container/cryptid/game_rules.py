@@ -9,6 +9,9 @@ from cryptid.board import generate_all_structures, get_all_animals
 from utils.graph_generate_landscape import get_terrain_types
 from utils.graph_utils import generate_unique_code, serialize_graph
 
+ 
+
+
 def process_move(args):
     game_map, map_state_cache, move, player, my_placements = args
     
@@ -17,19 +20,28 @@ def process_move(args):
     state_code_dict = {}
     for state in possible_states:
         state_key = tuple(sorted(state))
-        if state_key in map_state_cache:
-            unique_code = map_state_cache[state_key]
+        import hashlib
+        import json
+        
+        # Serialize the state key and create a hash
+        serialized_state = json.dumps(list(state_key), sort_keys=True)
+        state_key_hash = hashlib.md5(serialized_state.encode()).hexdigest()
+        if state_key_hash in map_state_cache:
+            unique_code = map_state_cache[state_key_hash]
         else:
             game_map_copy = game_map.copy()
             for player, node, is_disc in state:
-                place_player_piece(game_map_copy, node, player, is_disc)
-            serialized = serialize_graph(game_map_copy)
-            unique_code = generate_unique_code(serialized)
+                place_player_piece(game_map_copy, node, player, is_disc) 
+            # too much lock in with this logic. We need to play vs the others
+            # state_code = process_move_mapcode(game_map_copy, player)
+            unique_code = process_move_hintcode(game_map_copy, player) 
             map_state_cache[state_key] = unique_code
+ 
         final_states.append(unique_code)
 
-        state_code_dict[state_key] = unique_code
-        
+        state_code_dict[state_key_hash] = unique_code
+    # Ensure final_states contains only unique values
+    final_states = list(set(final_states))
     return move + (final_states,), state_code_dict
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
@@ -101,7 +113,8 @@ def find_available_cube_moves(game_map, player, hints):
 
 def select_top_cube_moves(generator, q_matrix, cube_moves, hint, n=10, learning_rate=0.1):
     if generator.random() < learning_rate:
-        return [generator.choice(cube_moves)]
+        index = generator.integers(0, len(cube_moves))
+        return [cube_moves[index]]
 
     scored_moves = []
     for move in cube_moves:
@@ -356,8 +369,14 @@ def process_move_hintcode(G, player):
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
     print(f"Starting multiprocessing pool for {len(my_moves)} moves")
-    with open('output/map_state_cache.json', 'r') as f:
-        map_state_cache = json.load(f)
+    import json
+    import os
+
+    if os.path.exists('output/map_state_cache.json'):
+        with open('output/map_state_cache.json', 'r') as f:
+            map_state_cache = json.load(f)
+    else:
+        map_state_cache = {}
     
     with mp.Pool() as pool:
         args = [(game_map, map_state_cache, move, player, my_placements) for move in my_moves]
