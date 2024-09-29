@@ -1,34 +1,44 @@
 import itertools
+import multiprocessing as mp
+import os
+import pickle
 import random
 from typing import Dict, List
-import multiprocessing as mp
-import pickle
-import os
 
 from cryptid.board import generate_all_structures, get_all_animals
 from utils.graph_generate_landscape import get_terrain_types
-from utils.graph_utils import serialize_graph, generate_unique_code
- 
+from utils.graph_utils import generate_unique_code, serialize_graph
+
 def process_move(args):
-    game_map, move, player, my_placements = args
+    game_map, map_state_cache, move, player, my_placements = args
     
     possible_states = generate_states(move, player, my_placements)
     final_states = []
+    state_code_dict = {}
     for state in possible_states:
-        game_map_copy = game_map.copy()
-        for player, node, is_disc in state:
-            place_player_piece(game_map_copy, node, player, is_disc)
-        serialized = serialize_graph(game_map_copy)
-        unique_code = generate_unique_code(serialized)
+        state_key = tuple(sorted(state))
+        if state_key in map_state_cache:
+            unique_code = map_state_cache[state_key]
+        else:
+            game_map_copy = game_map.copy()
+            for player, node, is_disc in state:
+                place_player_piece(game_map_copy, node, player, is_disc)
+            serialized = serialize_graph(game_map_copy)
+            unique_code = generate_unique_code(serialized)
+            map_state_cache[state_key] = unique_code
         final_states.append(unique_code)
+
+        state_code_dict[state_key] = unique_code
         
-    return move + (final_states,)
+    return move + (final_states,), state_code_dict
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
     print(f"Starting multiprocessing pool for {len(my_moves)} moves")
     with mp.Pool() as pool:
         args = [(game_map, move, player, my_placements) for move in my_moves]
-        moves_with_states = pool.map(process_move, args)
+        results = pool.map(process_move, args)
+        moves_with_states = [result[0] for result in results]
+        state_code_dict = {k: v for result in results for k, v in result[1].items()}
     print("Finished processing all moves")
     return moves_with_states
 
@@ -115,63 +125,7 @@ def select_top_cube_moves(generator, q_matrix, cube_moves, hint, n=10, learning_
 def policy_cube(generator, top_cube_moves):
     index = generator.choice(range(len(top_cube_moves)))
     return top_cube_moves[index]
-
-def update_q_matrix(q_matrix, moves, final_state, hints, **kwargs):
-    learning_rate = kwargs.get('learning_rate', 0.1)
-    discount_factor = kwargs.get('discount_factor', 0.9)
-    move_penalty = kwargs.get('move_penalty', -1)
-    lose_penalty = kwargs.get('lose_penalty', -10)
-    win_reward = kwargs.get('win_reward', 100)
-    cube_penalty = kwargs.get('cube_penalty', -2)  # Additional penalty for placing a cube
-    
-    last_move = moves[-1]
-    last_move_type = last_move[0]
-    final_reward = win_reward if last_move_type == 'wild_guess' else lose_penalty
-
-    for i in range(len(moves) - 1, -1, -1):
-        move, state, hint = moves[i]
-        next_state = moves[i+1][1] if i < len(moves) - 1 else final_state
-
-        current_q = q_matrix.get((state, hint, tuple(move[:2])), 0)
-
-        if move[0] == 'cube':
-            reward = cube_penalty
-        elif i == len(moves) - 1:
-            reward = final_reward
-        else:
-            reward = move_penalty
-
-        if i < len(moves) - 1:
-            next_move = moves[i+1]
-            next_q = q_matrix.get((next_state, hint, tuple(next_move[:2])), 0)
-        else:
-            next_q = 0  # Final state has no next move
-
-        new_q = current_q + learning_rate * (reward + discount_factor * next_q_max - current_q)
-
-        q_matrix[(state, hint, tuple(move[:2]))] = new_q
-
-    return q_matrix
-def policy(generator, top_moves):
-    indices = generator.choice(range(len(top_moves)), size=1)[0]
-    return top_moves[indices]
-
-def update_q_matrix(q_matrix, moves, final_state, hints, **kwargs):
-    learning_rate = kwargs.get('learning_rate', 0.1)
-    discount_factor = kwargs.get('discount_factor', 0.9)
-    move_penalty = kwargs.get('move_penalty', -1)
-    lose_penalty = kwargs.get('lose_penalty', -10)
-    win_reward = kwargs.get('win_reward', 100)
-    
-    # Determine the final reward based on the game outcome
-import itertools
-import random
-from typing import Dict, List
-
-from cryptid.board import  generate_all_structures, get_all_animals
-from utils.graph_generate_landscape import get_terrain_types
-from utils.graph_utils import serialize_graph, generate_unique_code
-
+ 
 
 def generate_all_hints() -> Dict[str, List[str]]:
     """
@@ -341,23 +295,7 @@ def process_move_mapcode(G, current_player):
     unique_code = generate_unique_code(serialized)
 
     return unique_code
-
-def process_move(args):
-    game_map, move, player, my_placements = args
-    
-    possible_states = generate_states(move, player, my_placements)
-    final_states = []
-    for state in possible_states:
-        game_map_copy = game_map.copy()
-        for other_player, node, is_disc in state:
-            place_player_piece(game_map_copy, node, other_player, is_disc)
-        # too much lock in with this logic. We need to play vs the others
-        # state_code = process_move_mapcode(game_map_copy, player)
-        state_code = process_move_hintcode(game_map_copy, player)
-        final_states.append(state_code)
-    # Ensure final_states contains only unique state codes
-    final_states = list(set(final_states))
-    return move + (final_states,)
+ 
 def hint_applies_everywhere(game_map, player, hint):
     """
     Check if a hint applies everywhere on the game map for a given player.
@@ -416,76 +354,25 @@ def process_move_hintcode(G, player):
     # the other players know about the current player
     return player+"-"+"-".join([f"{hint}" for hint in hints_counts])
 
-
 def find_predicted_states(game_map, my_moves, player, my_placements):
     print(f"Starting multiprocessing pool for {len(my_moves)} moves")
+    with open('output/map_state_cache.json', 'r') as f:
+        map_state_cache = json.load(f)
+    
     with mp.Pool() as pool:
-        args = [(game_map, move, player, my_placements) for move in my_moves]
-        moves_with_states = pool.map(process_move, args)
+        args = [(game_map, map_state_cache, move, player, my_placements) for move in my_moves]
+        results = pool.map(process_move, args)
+        moves_with_states = [result[0] for result in results]
+        state_code_dict = {k: v for result in results for k, v in result[1].items()}
     print("Finished processing all moves")
+    # Merge the new state codes with the existing cache
+    map_state_cache.update(state_code_dict)
+    
+    # Save the updated cache back to the JSON file
+    with open('output/map_state_cache.json', 'w') as f:
+        json.dump(map_state_cache, f)
     return moves_with_states
- 
-def get_q_value(q_matrix, move, state, hint):
-    # Return the Q-value for a given state-action pair, defaulting to 1 if unknown
-    # Sort the hint list and convert it to a tuple
-    sorted_hint = tuple(sorted(hint))
-    return q_matrix.get((state, sorted_hint, tuple(move)), 1) 
-
-def select_top_moves(generator, q_matrix, moves_with_states, hint, n=10):
-    scored_moves = []
-    for move in moves_with_states:
-        states = move[-1]
-        # Calculate the average Q-value across all possible resulting states
-        # This accounts for the uncertainty in the outcome of each move
-        avg_q_value = sum(get_q_value(q_matrix, move[:2], state, hint) for state in states) / len(states)
-        scored_moves.append((move, avg_q_value))
-    
-    # Sort moves by their average Q-value in descending order
-    sorted_moves = sorted(scored_moves, key=lambda x: x[1], reverse=True)
-    
-    # If we have fewer moves than requested, return all of them
-    if len(sorted_moves) <= n:
-        return [move for move, _ in sorted_moves]
-    
-    # Find the Q-value of the nth move
-    cutoff_score = sorted_moves[n-1][1]
-    # Select all moves with Q-value greater than or equal to the cutoff
-    top_moves = [move for move, score in sorted_moves if score >= cutoff_score]
-    
-    # If we have more than n moves due to ties, randomly select n of them
-    if len(top_moves) > n:
-        indices = generator.choice(range(len(top_moves)), size=n, replace=False)
-        return [top_moves[i] for i in indices]
-    else:
-        return top_moves
-
-def find_available_cube_moves(game_map, player, hints):
-    placements = find_available_placements(game_map, hints[player])
-    return [('cube', node) for node in placements['cube']]
-
-def select_top_cube_moves(generator, q_matrix, cube_moves, hint, n=10):
-    scored_moves = []
-    for move in cube_moves:
-        q_value = get_q_value(q_matrix, move, None, hint)  # No state for cube moves
-        scored_moves.append((move, q_value))
-    
-    sorted_moves = sorted(scored_moves, key=lambda x: x[1], reverse=True)
-    
-    if len(sorted_moves) <= n:
-        return [move for move, _ in sorted_moves]
-    
-    cutoff_score = sorted_moves[n-1][1]
-    top_moves = [move for move, score in sorted_moves if score >= cutoff_score]
-    
-    if len(top_moves) > n:
-        indices = generator.choice(range(len(top_moves)), size=n, replace=False)
-        return [top_moves[i] for i in indices]
-    else:
-        return top_moves
-
-def policy_cube(generator, top_cube_moves):
-    index = generator.choice(range(len(top_cube_moves)))
-    return top_cube_moves[index]
+   
 
 def policy(generator, top_moves):
     indices = generator.choice(range(len(top_moves)), size=1)[0]
