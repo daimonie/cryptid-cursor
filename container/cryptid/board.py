@@ -5,6 +5,7 @@ from utils.graph_generate_landscape import generate_hexagonal_grid_graph
 from utils.graph_generate_random_area import add_connected_area_attribute
 from utils.graph_utils import enrich_node_attributes
 
+
 def generate_structure_color_combinations():
     """
     Generate all possible combinations of structures and colors.
@@ -14,6 +15,7 @@ def generate_structure_color_combinations():
     """
     structures, colors = generate_all_structures()
     return [f"{s}_{c}" for s in structures for c in colors]
+
 
 def select_random_structures(generator, all_structures, min_structures, max_structures):
     """
@@ -31,6 +33,7 @@ def select_random_structures(generator, all_structures, min_structures, max_stru
     num_structures = generator.integers(min_structures, max_structures + 1)
     return generator.choice(all_structures, size=num_structures, replace=False).tolist()
 
+
 def try_location(generator, G, rows, cols, all_structures):
     """
     Attempt to find an empty location on the graph for a structure.
@@ -47,10 +50,11 @@ def try_location(generator, G, rows, cols, all_structures):
     """
     row = generator.integers(0, rows)
     col = generator.integers(0, cols)
-    
+
     if not any(G.nodes[(row, col)].get(s, False) for s in all_structures):
         return row, col
     return None
+
 
 def find_empty_location(generator, G, rows, cols, all_structures):
     result = try_location(generator, G, rows, cols, all_structures)
@@ -59,19 +63,21 @@ def find_empty_location(generator, G, rows, cols, all_structures):
     else:
         return find_empty_location(generator, G, rows, cols, all_structures)
 
+
 def add_structure_to_graph(G, structure, location):
     row, col = location
-    parts = structure.split('_')
+    parts = structure.split("_")
     color = parts.pop()
-    structure_type = '_'.join(parts)
+    structure_type = "_".join(parts)
     G.nodes[(row, col)][structure] = True
     G.nodes[(row, col)][structure_type] = True
     G.nodes[(row, col)][color] = True
 
+
 def add_random_structures(generator, G, rows, cols, min_structures=4, max_structures=6):
     """
     Add random structures to the hexagonal grid.
-    
+
     Args:
     generator (numpy.random.Generator): The random number generator.
     G (networkx.Graph): The hexagonal grid graph.
@@ -85,8 +91,9 @@ def add_random_structures(generator, G, rows, cols, min_structures=4, max_struct
     for node in G.nodes:
         for structure in all_structures:
             G.nodes[node][structure] = False
-    selected_structures = select_random_structures(generator, all_structures, min_structures, max_structures)
-    
+    selected_structures = select_random_structures(
+        generator, all_structures, min_structures, max_structures
+    )
 
     for structure in selected_structures:
         location = find_empty_location(generator, G, rows, cols, all_structures)
@@ -94,30 +101,34 @@ def add_random_structures(generator, G, rows, cols, min_structures=4, max_struct
 
 
 def generate_all_structures():
-    structures = ['standing_stone', 'abandoned_shack']
-    colors = ['blue', 'green', 'white', 'black']
+    structures = ["standing_stone", "abandoned_shack"]
+    colors = ["blue", "green", "white", "black"]
     return structures, colors
 
+
 def get_all_animals():
-    return ['bear', 'cougar']
+    return ["bear", "cougar"]
+
 
 def get_terrain_types():
-    return ['forest', 'desert', 'water', 'mountain', 'swamp']
+    return ["forest", "desert", "water", "mountain", "swamp"]
+
+
 def generate_game_map(generator, rows, cols):
     G = generate_hexagonal_grid_graph(rows, cols)
 
     # Add animal areas
     for animal in get_all_animals():
-        add_connected_area_attribute(G, f'is_{animal.lower()}', 2)
-        add_connected_area_attribute(G, f'is_{animal.lower()}', 3)
+        add_connected_area_attribute(G, f"is_{animal.lower()}", 2)
+        add_connected_area_attribute(G, f"is_{animal.lower()}", 3)
 
     # Add random structures to the board
     add_random_structures(generator, G, rows, cols)
 
     # Get all structure attributes
     all_structures = generate_structure_color_combinations()
-    
-    all_attrs = [f'is_{animal}' for animal in get_all_animals()] + all_structures
+
+    all_attrs = [f"is_{animal}" for animal in get_all_animals()] + all_structures
 
     # Enrich node attributes for all structures
     G = enrich_node_attributes(G)

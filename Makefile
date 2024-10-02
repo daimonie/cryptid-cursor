@@ -36,3 +36,7 @@ visualize:
 	-v $(PWD)/data/:/opt/container/data \
 	-v $(PWD)/notebook:/opt/container/notebook \
 	python-template poetry run python visualize_board.py
+
+lint: 
+	docker run -v $(PWD)/container/:/opt/container \
+	python-template poetry run black .

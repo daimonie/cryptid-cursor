@@ -1,13 +1,21 @@
-import unittest
-import networkx as nx
-import json
 import builtins
+import json
+import unittest
 from unittest import mock
-from utils.graph_utils import serialize_graph, generate_unique_code, parse_code_to_graph, enrich_node_attributes, filter_nodes_by_attributes
+
+import networkx as nx
+
 from utils.graph_generate_landscape import generate_hexagonal_grid_graph
+from utils.graph_utils import (
+    enrich_node_attributes,
+    filter_nodes_by_attributes,
+    generate_unique_code,
+    parse_code_to_graph,
+    serialize_graph,
+)
+
 
 class TestGraphUtils(unittest.TestCase):
-
     def setUp(self):
         self.graph = generate_hexagonal_grid_graph(8, 11)
 
@@ -29,21 +37,34 @@ class TestGraphUtils(unittest.TestCase):
     def test_parse_code_to_graph(self):
         serialized = serialize_graph(self.graph)
         code = generate_unique_code(serialized)
-        
+
         # Mocking the file read operation
         original_open = builtins.open
-        builtins.open = lambda *args, **kwargs: mock.mock_open(read_data=serialized)(*args, **kwargs)
-        
+        builtins.open = lambda *args, **kwargs: mock.mock_open(read_data=serialized)(
+            *args, **kwargs
+        )
+
         try:
             parsed_graph, _ = parse_code_to_graph(code)
-            
+
             self.assertIsInstance(parsed_graph, nx.Graph)
             self.assertEqual(len(parsed_graph.nodes), 88)
             self.assertGreater(len(parsed_graph.edges), 0)
             # Check if nodes have the expected attributes
             for node in parsed_graph.nodes:
                 attrs = parsed_graph.nodes[node]
-                self.assertTrue(any(attrs[f'is_{terrain}'] for terrain in ['swamp', 'forest', 'water', 'mountain', 'desert']))
+                self.assertTrue(
+                    any(
+                        attrs[f"is_{terrain}"]
+                        for terrain in [
+                            "swamp",
+                            "forest",
+                            "water",
+                            "mountain",
+                            "desert",
+                        ]
+                    )
+                )
         finally:
             builtins.open = original_open
 
@@ -51,14 +72,22 @@ class TestGraphUtils(unittest.TestCase):
         enriched_graph = enrich_node_attributes(self.graph)
         for node in enriched_graph.nodes:
             attrs = enriched_graph.nodes[node]
-            self.assertTrue(any(attrs[f'neighbor_is_{terrain}'] for terrain in ['swamp', 'forest', 'water', 'mountain', 'desert']))
+            self.assertTrue(
+                any(
+                    attrs[f"neighbor_is_{terrain}"]
+                    for terrain in ["swamp", "forest", "water", "mountain", "desert"]
+                )
+            )
 
     def test_filter_nodes_by_attributes(self):
-        for terrain in ['swamp', 'forest', 'water', 'mountain', 'desert']:
-            filtered_nodes = filter_nodes_by_attributes(self.graph, f'is_{terrain}', True)
+        for terrain in ["swamp", "forest", "water", "mountain", "desert"]:
+            filtered_nodes = filter_nodes_by_attributes(
+                self.graph, f"is_{terrain}", True
+            )
             self.assertGreater(len(filtered_nodes), 0)
             for node in filtered_nodes:
-                self.assertTrue(self.graph.nodes[node][f'is_{terrain}'])
+                self.assertTrue(self.graph.nodes[node][f"is_{terrain}"])
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

@@ -19,6 +19,9 @@ jupyterlab = "^4.0.9"
 seaborn = "^0.13.0"
 pyarrow = "^14.0.1"
 matplotlib = "^3.8.2"
+isort = "^5.12.0"
+black = "^23.11.0"
+flake8 = "^6.1.0"
 networkx = "^3.3"
 
 [tool.poetry.group.dev.dependencies]
