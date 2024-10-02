@@ -40,9 +40,4 @@ RUN chown -R root:python-role /opt/container && \
     chmod -R 775 /opt/container/output
 
 # Install poetry dependencies for root
-RUN poetry install
-# Switch to pythonuser for default operation
-USER pythonuser
-
-# Install poetry dependencies for pythonuser
-RUN poetry install
+RUN poetry install 
