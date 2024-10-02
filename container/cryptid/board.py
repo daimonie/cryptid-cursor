@@ -6,14 +6,45 @@ from utils.graph_generate_random_area import add_connected_area_attribute
 from utils.graph_utils import enrich_node_attributes
 
 def generate_structure_color_combinations():
+    """
+    Generate all possible combinations of structures and colors.
+
+    Returns:
+    list: A list of strings, each representing a unique structure-color combination.
+    """
     structures, colors = generate_all_structures()
     return [f"{s}_{c}" for s in structures for c in colors]
 
 def select_random_structures(generator, all_structures, min_structures, max_structures):
+    """
+    Select a random number of structures from the given list.
+
+    Args:
+    generator (numpy.random.Generator): The random number generator.
+    all_structures (list): List of all possible structures.
+    min_structures (int): Minimum number of structures to select.
+    max_structures (int): Maximum number of structures to select.
+
+    Returns:
+    list: A list of randomly selected structures.
+    """
     num_structures = generator.integers(min_structures, max_structures + 1)
     return generator.choice(all_structures, size=num_structures, replace=False).tolist()
 
 def try_location(generator, G, rows, cols, all_structures):
+    """
+    Attempt to find an empty location on the graph for a structure.
+
+    Args:
+    generator (numpy.random.Generator): The random number generator.
+    G (networkx.Graph): The graph representing the game board.
+    rows (int): Number of rows in the grid.
+    cols (int): Number of columns in the grid.
+    all_structures (list): List of all possible structures.
+
+    Returns:
+    tuple or None: A tuple (row, col) if an empty location is found, None otherwise.
+    """
     row = generator.integers(0, rows)
     col = generator.integers(0, cols)
     

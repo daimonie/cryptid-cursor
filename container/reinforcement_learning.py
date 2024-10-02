@@ -1,6 +1,7 @@
 import numpy as np
 import os
 import random
+import time
 from cryptid.game_rules import (
     count_tiles_fitting_hints,
     initialize_player_pieces,
@@ -27,7 +28,8 @@ if __name__ == "__main__":
 
 
     # Get all JSON files in /opt/container/output except qmatrix.json
-    json_files = [f for f in os.listdir('/opt/container/output') if f.endswith('.json') and f != 'qmatrix.json']
+    expected_json = ['map_state_cache.json', 'qmatrix.json']
+    json_files = [f for f in os.listdir('/opt/container/output') if f.endswith('.json') and f not in expected_json]
 
     # Randomly select one file
     selected_file = random.choice(json_files) 
@@ -179,6 +181,11 @@ if __name__ == "__main__":
             player_won
         )
         print(f"Final reward for {player}: {final_reward}")
+         
 
     # Save updated Q-matrix 
     save_q_matrix(q_matrix)
+
+    print("Sleeping for 5 seconds...")
+    time.sleep(5)
+    print("Finished sleeping")

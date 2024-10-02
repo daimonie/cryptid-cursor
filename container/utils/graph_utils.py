@@ -78,7 +78,7 @@ def parse_code_to_graph(graph_hash: str) -> nx.Graph:
                 corrected_hints[key] = value
         graph_data["hints"] = corrected_hints
 
-    return graph, graph_data["hints"]
+    return graph, graph_data.get("hints", [])
 def update_neighbors_with_prefix(graph: nx.Graph, attr: str, prefix: str, levels: int = 3) -> None:
     """
     Update nodes with prefixed attributes based on the presence of the attribute in neighboring nodes.

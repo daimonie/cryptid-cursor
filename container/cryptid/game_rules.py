@@ -1,9 +1,9 @@
 import itertools
-import multiprocessing as mp
-import os
-import pickle
-import random
+import multiprocessing as mp 
 from typing import Dict, List
+import hashlib
+import json
+import json 
 
 from cryptid.board import generate_all_structures, get_all_animals
 from utils.graph_generate_landscape import get_terrain_types
@@ -13,47 +13,26 @@ from utils.graph_utils import generate_unique_code, serialize_graph
 
 
 def process_move(args):
-    game_map, map_state_cache, move, player, my_placements = args
+    game_map, move, player, my_placements = args
     
     possible_states = generate_states(move, player, my_placements)
     final_states = []
     state_code_dict = {}
     for state in possible_states:
         state_key = tuple(sorted(state))
-        import hashlib
-        import json
         
-        # Serialize the state key and create a hash
-        serialized_state = json.dumps(list(state_key), sort_keys=True)
-        state_key_hash = hashlib.md5(serialized_state.encode()).hexdigest()
-        if state_key_hash in map_state_cache:
-            unique_code = map_state_cache[state_key_hash]
-        else:
-            game_map_copy = game_map.copy()
-            for player, node, is_disc in state:
-                place_player_piece(game_map_copy, node, player, is_disc) 
-            # too much lock in with this logic. We need to play vs the others
-            # state_code = process_move_mapcode(game_map_copy, player)
-            unique_code = process_move_hintcode(game_map_copy, player) 
-            map_state_cache[state_key] = unique_code
- 
-        final_states.append(unique_code)
+        game_map_copy = game_map.copy()
+        for player, node, is_disc in state:
+            place_player_piece(game_map_copy, node, player, is_disc) 
+        # too much lock in with this logic. We need to play vs the others
+        # state_code = process_move_mapcode(game_map_copy, player)
+        unique_code = process_move_hintcode(game_map_copy, player) 
 
-        state_code_dict[state_key_hash] = unique_code
+        final_states.append(unique_code) 
     # Ensure final_states contains only unique values
     final_states = list(set(final_states))
     return move + (final_states,), state_code_dict
-
-def find_predicted_states(game_map, my_moves, player, my_placements):
-    print(f"Starting multiprocessing pool for {len(my_moves)} moves")
-    with mp.Pool() as pool:
-        args = [(game_map, move, player, my_placements) for move in my_moves]
-        results = pool.map(process_move, args)
-        moves_with_states = [result[0] for result in results]
-        state_code_dict = {k: v for result in results for k, v in result[1].items()}
-    print("Finished processing all moves")
-    return moves_with_states
-
+ 
 def save_q_matrix(q_matrix):
     import pickle
     with open('/opt/container/output/qmatrix.pkl', 'wb') as f:
@@ -78,7 +57,8 @@ def get_q_value(q_matrix, move, state, hint):
 
 def select_top_moves(generator, q_matrix, moves_with_states, hint, n=10, learning_rate=0.1):
     if generator.random() < learning_rate:
-        return [generator.choice(moves_with_states)]
+        index = generator.integers(0, len(moves_with_states))
+        return [moves_with_states[index]]
 
     scored_moves = []
     for move in moves_with_states:
@@ -369,27 +349,13 @@ def process_move_hintcode(G, player):
 
 def find_predicted_states(game_map, my_moves, player, my_placements):
     print(f"Starting multiprocessing pool for {len(my_moves)} moves")
-    import json
-    import os
-
-    if os.path.exists('output/map_state_cache.json'):
-        with open('output/map_state_cache.json', 'r') as f:
-            map_state_cache = json.load(f)
-    else:
-        map_state_cache = {}
-    
+     
     with mp.Pool() as pool:
-        args = [(game_map, map_state_cache, move, player, my_placements) for move in my_moves]
+        args = [(game_map, move, player, my_placements) for move in my_moves]
         results = pool.map(process_move, args)
         moves_with_states = [result[0] for result in results]
         state_code_dict = {k: v for result in results for k, v in result[1].items()}
     print("Finished processing all moves")
-    # Merge the new state codes with the existing cache
-    map_state_cache.update(state_code_dict)
-    
-    # Save the updated cache back to the JSON file
-    with open('output/map_state_cache.json', 'w') as f:
-        json.dump(map_state_cache, f)
     return moves_with_states
    
 
